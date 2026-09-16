@@ -72,6 +72,18 @@ export function friendly(err: unknown): FriendlyError {
   if (/contribution_above_bus_fare/i.test(m)) {
     return { code: 'APP-01', message: 'That contribution is higher than the bus fare on this route — TUJYANE must stay cheaper than the bus.' };
   }
+  if (/departure_in_past/i.test(m)) {
+    return { code: 'APP-01', message: 'Departure must be in the future.' };
+  }
+  if (/seats_over_capacity/i.test(m)) {
+    return { code: 'APP-01', message: 'Seats exceed the car’s capacity.' };
+  }
+  if (/vehicle_already_on_active_trip/i.test(m)) {
+    return { code: 'APP-01', message: 'That car is already on another active trip.' };
+  }
+  if (/trip_not_yet_startable/i.test(m)) {
+    return { code: 'APP-01', message: 'Departure hasn’t arrived yet. You can start the trip at or after the scheduled time.' };
+  }
 
   // Generic fallback — never expose the raw text.
   return {

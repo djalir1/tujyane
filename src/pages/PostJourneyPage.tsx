@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardDescription, CardTitle } from '@/components/ds/Card';
 import { TextField } from '@/components/ds/TextField';
 import { Select } from '@/components/ds/Select';
@@ -15,12 +15,14 @@ import { listMyVehicles, type Vehicle } from '@/features/vehicles/api';
 import { AddVehicleForm } from '@/features/vehicles/AddVehicleForm';
 import { createJourney, type Recurrence } from '@/features/journeys/api';
 import {
-  findCorridorFare, listCorridorFares, loadPricingConfig,
+  findCorridorFare, listCorridorFares, listLocations, loadPricingConfig,
   type CorridorFare, type Location, locationLabel,
 } from '@/features/locations/api';
 import { computeSuggested, type PricingBreakdown, type PricingConfig, withinBand, breakdownLine } from '@/lib/pricing';
 import { useDataFetch } from '@/lib/useDataFetch';
 import { formatRWF } from '@/lib/format';
+import { afterErrorsRender } from '@/lib/formErrors';
+import { validateDepartureTime, validateSeats } from '@/lib/validation';
 
 type Errors = Partial<Record<
   | 'origin' | 'destination'
@@ -37,6 +39,19 @@ export default function PostJourneyPage() {
   const { user, profile } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
+  // Recurrence prefill: OverviewPage's "Post next" link comes in with the
+  // route/vehicle/price/departure query params. JourneyForm consumes them
+  // once on mount so the driver just clicks Post.
+  const [urlParams] = useSearchParams();
+  const prefill = {
+    fromId: urlParams.get('from_id') || null,
+    toId:   urlParams.get('to_id') || null,
+    vehicleId: urlParams.get('vehicle_id') || null,
+    seats: urlParams.get('seats') || null,
+    contribution: urlParams.get('contribution') || null,
+    departureIso: urlParams.get('departure') || null,
+    recurrence: urlParams.get('recurrence') || null,
+  };
 
   const fetcher = useCallback(async (): Promise<Bundle> => {
     if (!user) return { vehicles: [], config: FALLBACK_CONFIG, fares: [] };
@@ -139,6 +154,7 @@ export default function PostJourneyPage() {
           vehicles={vehicles}
           config={config}
           fares={fares}
+          prefill={prefill}
           onAddAnother={() => setAddingOverride(true)}
           onCreated={() => {
             toast.push({ kind: 'success', title: 'Journey posted', message: 'Passengers can now find and request it.' });
@@ -155,12 +171,23 @@ const FALLBACK_CONFIG: PricingConfig = {
   min_contribution: 500, adjust_band_pct: 10, bus_discount_pct: 20,
 };
 
+type Prefill = {
+  fromId: string | null;
+  toId: string | null;
+  vehicleId: string | null;
+  seats: string | null;
+  contribution: string | null;
+  departureIso: string | null;
+  recurrence: string | null;
+};
+
 function JourneyForm({
-  vehicles, config, fares, onAddAnother, onCreated,
+  vehicles, config, fares, prefill, onAddAnother, onCreated,
 }: {
   vehicles: Vehicle[];
   config: PricingConfig;
   fares: CorridorFare[];
+  prefill?: Prefill;
   onAddAnother: () => void;
   onCreated: () => void;
 }) {
@@ -169,16 +196,52 @@ function JourneyForm({
 
   const [origin, setOrigin] = useState<Location | null>(null);
   const [destination, setDestination] = useState<Location | null>(null);
-  const [date, setDate] = useState<Date | null>(null);
-  const [time, setTime] = useState<string | null>(null);
-  const [recurrence, setRecurrence] = useState<Recurrence>('once');
-  // Default to the driver's FIRST VERIFIED vehicle — an unverified car would
-  // be refused at INSERT and confuse the driver.
+  const [date, setDate] = useState<Date | null>(() => {
+    if (!prefill?.departureIso) return null;
+    const d = new Date(prefill.departureIso);
+    return Number.isNaN(d.getTime()) ? null : d;
+  });
+  const [time, setTime] = useState<string | null>(() => {
+    if (!prefill?.departureIso) return null;
+    const d = new Date(prefill.departureIso);
+    if (Number.isNaN(d.getTime())) return null;
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  });
+  const [recurrence, setRecurrence] = useState<Recurrence>(() =>
+    (prefill?.recurrence as Recurrence) || 'once',
+  );
+  // Default to the driver's FIRST VERIFIED vehicle unless prefill picks one.
   const firstVerified = vehicles.find((v) => v.is_verified);
-  const [vehicleId, setVehicleId] = useState<string | undefined>(firstVerified?.id);
-  const [seats, setSeats] = useState<string>(String(Math.min(4, firstVerified?.seats ?? 4)));
-  const [contribution, setContribution] = useState<string>('');
-  const [contributionDirty, setContributionDirty] = useState(false);
+  const [vehicleId, setVehicleId] = useState<string | undefined>(
+    prefill?.vehicleId && vehicles.find((v) => v.id === prefill.vehicleId && v.is_verified)
+      ? prefill.vehicleId
+      : firstVerified?.id,
+  );
+  const [seats, setSeats] = useState<string>(
+    prefill?.seats ?? String(Math.min(4, firstVerified?.seats ?? 4)),
+  );
+  const [contribution, setContribution] = useState<string>(prefill?.contribution ?? '');
+  const [contributionDirty, setContributionDirty] = useState(Boolean(prefill?.contribution));
+
+  // Resolve prefill.fromId / prefill.toId to actual Location rows once.
+  useEffect(() => {
+    if (!prefill?.fromId && !prefill?.toId) return;
+    let alive = true;
+    void listLocations().then((rows) => {
+      if (!alive) return;
+      if (prefill.fromId) {
+        const o = rows.find((r) => r.id === prefill.fromId);
+        if (o) setOrigin((cur) => cur ?? o);
+      }
+      if (prefill.toId) {
+        const d = rows.find((r) => r.id === prefill.toId);
+        if (d) setDestination((cur) => cur ?? d);
+      }
+    }).catch(() => { /* silent — user can still fill manually */ });
+    return () => { alive = false; };
+    // Prefill is a one-time seed; deps intentionally minimal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [luggage, setLuggage] = useState(true);
   const [pets, setPets] = useState(false);
   const [smoking, setSmoking] = useState(false);
@@ -220,6 +283,8 @@ function JourneyForm({
     }
   }, [breakdown, contributionDirty]);
 
+  const formRef = useRef<HTMLFormElement>(null);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
@@ -231,11 +296,9 @@ function JourneyForm({
     if (!time)        next.time = 'Pick a time.';
     if (!vehicleId)   next.vehicle = 'Select a vehicle.';
 
-    if (!seats || Number.isNaN(seatsNum) || seatsNum < 1 || seatsNum > 7) {
-      next.seats = 'Between 1 and 7.';
-    } else if (vehicle && seatsNum > vehicle.seats) {
-      next.seats = `Your vehicle has ${vehicle.seats} seats.`;
-    }
+    // Central seats validator — same rule DB enforces (guard_journey_seats_capacity).
+    const seatsCheck = validateSeats(seatsNum, vehicle?.seats);
+    if (!seatsCheck.ok) next.seats = seatsCheck.message;
 
     if (!breakdown) {
       next.contribution = 'Distance couldn’t be calculated — try different places.';
@@ -253,12 +316,21 @@ function JourneyForm({
       const [h, m] = time.split(':').map(Number);
       const d = new Date(date);
       d.setHours(h, m, 0, 0);
-      if (d.getTime() <= Date.now()) next.time = 'Departure must be in the future.';
+      // Central departure validator — matches DB guard_journey_departure_future.
+      const depCheck = validateDepartureTime(d);
+      if (!depCheck.ok) next.time = depCheck.message;
       else departureIso = d.toISOString();
     }
 
     setErrors(next);
-    if (Object.keys(next).length || !departureIso || !vehicleId || !origin || !destination || !breakdown) return;
+    if (Object.keys(next).length || !departureIso || !vehicleId || !origin || !destination || !breakdown) {
+      // Global form UX: scroll to the first invalid field, focus it, and
+      // fire a summary toast so the user isn't left guessing.
+      afterErrorsRender(formRef.current, (n) => {
+        if (n > 0) toast.push({ kind: 'error', message: 'Please fix the highlighted fields.' });
+      });
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -301,7 +373,7 @@ function JourneyForm({
   }));
 
   return (
-    <form onSubmit={onSubmit} noValidate className="grid gap-4">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="grid gap-4">
       <Card>
         <CardTitle>Route</CardTitle>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">

@@ -179,11 +179,20 @@ export type MyJourney = JourneyRow & {
 };
 
 export async function listMyJourneys(driverId: string): Promise<MyJourney[]> {
+  // CRITICAL: select contribution_per_seat too. The previous version only
+  // returned suggested_contribution, so a driver who adjusted the price (±10%
+  // band) saw the auto-suggested number on their dashboard while passengers
+  // saw the actual chosen number in search. That looked like a "price
+  // mismatch" bug. `contributionOf(j)` used everywhere else picks the right
+  // field; the dashboard is fine as long as we actually fetch it.
   const { data, error } = await supabase
     .from('journeys')
     .select(`
-      id, driver_id, vehicle_id, origin_text, destination_text, departure_time, recurrence,
-      seats_total, seats_available, suggested_contribution,
+      id, driver_id, vehicle_id,
+      origin_location_id, destination_location_id, distance_km,
+      origin_text, destination_text, departure_time, recurrence,
+      seats_total, seats_available,
+      suggested_contribution, contribution_per_seat,
       luggage_allowed, pets_allowed, smoking_allowed, women_only,
       notes, status, created_at,
       vehicle:vehicles!journeys_vehicle_id_fkey ( make, model, energy_type, is_verified ),
@@ -276,6 +285,18 @@ function mapCreateError(err: { message?: string }): Error {
   }
   if (raw.includes('vehicle_required')) {
     return new Error('Pick which car you will drive for this journey.');
+  }
+  if (raw.includes('departure_in_past')) {
+    return new Error('Departure must be in the future.');
+  }
+  if (raw.includes('seats_over_capacity')) {
+    return new Error('Seats exceed the car’s capacity.');
+  }
+  if (raw.includes('seats_below_min')) {
+    return new Error('Seats must be at least 1.');
+  }
+  if (raw.includes('vehicle_already_on_active_trip')) {
+    return new Error('That car is already on another active trip. Cancel or complete the other trip before posting a new one on this car.');
   }
   return new Error(raw);
 }

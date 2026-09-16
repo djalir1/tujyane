@@ -55,28 +55,30 @@ function Hero() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-navy text-white">
-      {/* Layered background: two radial glows + a Rwandan-hills silhouette
-          SVG at the bottom. Everything vector, no external asset, no theme
-          bleed. Content sits on top with generous z-index. */}
-      <div
-        aria-hidden
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            'radial-gradient(1100px 380px at 88% -12%, rgb(46 158 58 / 0.55), transparent 62%),' +
-            'radial-gradient(900px 300px at -10% 120%, rgb(21 88 202 / 0.55), transparent 62%),' +
-            'linear-gradient(180deg, rgb(11 30 64 / 0) 0%, rgb(6 18 42 / 0.5) 100%)',
-        }}
-      />
-      <svg
-        aria-hidden
-        viewBox="0 0 1200 240" preserveAspectRatio="none"
-        className="absolute left-0 right-0 bottom-0 w-full h-40 sm:h-48 opacity-40 pointer-events-none"
-      >
-        <path d="M0 200 L60 170 L140 190 L220 140 L320 180 L410 120 L520 170 L620 130 L720 180 L820 140 L920 190 L1020 150 L1120 180 L1200 160 L1200 240 L0 240 Z" fill="#0b3d2b" />
-        <path d="M0 220 L80 190 L180 210 L260 170 L360 200 L470 160 L580 200 L680 170 L780 210 L880 180 L980 210 L1080 190 L1200 210 L1200 240 L0 240 Z" fill="#062516" opacity="0.85" />
-      </svg>
+    // NOTE: section is overflow-visible so the DatePicker/CityAutocomplete
+    // dropdowns can escape the hero when the search bar is near the bottom.
+    // The clipped background art lives in an inner absolutely-positioned
+    // wrapper that IS overflow-hidden — this keeps the gradient/hills silo
+    // contained without trapping user-facing popovers inside the hero.
+    <section className="relative bg-navy text-white">
+      <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              'radial-gradient(1100px 380px at 88% -12%, rgb(46 158 58 / 0.55), transparent 62%),' +
+              'radial-gradient(900px 300px at -10% 120%, rgb(21 88 202 / 0.55), transparent 62%),' +
+              'linear-gradient(180deg, rgb(11 30 64 / 0) 0%, rgb(6 18 42 / 0.5) 100%)',
+          }}
+        />
+        <svg
+          viewBox="0 0 1200 240" preserveAspectRatio="none"
+          className="absolute left-0 right-0 bottom-0 w-full h-40 sm:h-48 opacity-40"
+        >
+          <path d="M0 200 L60 170 L140 190 L220 140 L320 180 L410 120 L520 170 L620 130 L720 180 L820 140 L920 190 L1020 150 L1120 180 L1200 160 L1200 240 L0 240 Z" fill="#0b3d2b" />
+          <path d="M0 220 L80 190 L180 210 L260 170 L360 200 L470 160 L580 200 L680 170 L780 210 L880 180 L980 210 L1080 190 L1200 210 L1200 240 L0 240 Z" fill="#062516" opacity="0.85" />
+        </svg>
+      </div>
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 pt-10 sm:pt-16 pb-10 sm:pb-20">
         <div className="max-w-3xl">

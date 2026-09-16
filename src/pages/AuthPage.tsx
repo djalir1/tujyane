@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ds/Card';
@@ -16,6 +16,8 @@ import {
   validatePassword,
   validatePhone,
 } from '@/lib/validators';
+import { afterErrorsRender } from '@/lib/formErrors';
+import { useToast } from '@/components/ds/Toast';
 import type { RoleIntent } from '@/lib/database.types';
 
 type Mode = 'signin' | 'signup';
@@ -164,6 +166,8 @@ function clearAttempts() { writeAttempts(0); writeLockUntil(0); }
 function SignInForm({ onDone, onSwitchToSignup }: { onDone: () => void; onSwitchToSignup: () => void }) {
   const { t } = useTranslation();
   const { signIn } = useAuth();
+  const toast = useToast();
+  const formRef = useRef<HTMLFormElement>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
@@ -191,7 +195,12 @@ function SignInForm({ onDone, onSwitchToSignup }: { onDone: () => void; onSwitch
     if (!em.ok) next.email = em.message;
     if (!password) next.password = 'Enter your password.';
     setErrors(next);
-    if (Object.keys(next).length) return;
+    if (Object.keys(next).length) {
+      afterErrorsRender(formRef.current, (n) => {
+        if (n > 0) toast.push({ kind: 'error', message: 'Please fix the highlighted fields.' });
+      });
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -225,7 +234,7 @@ function SignInForm({ onDone, onSwitchToSignup }: { onDone: () => void; onSwitch
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+    <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
       <TextField
         label={t('auth.email')}
         type="email"
@@ -343,6 +352,8 @@ function ForgotPasswordForm({ initialEmail, onBack }: { initialEmail: string; on
 function SignUpForm({ onDone, onSwitchToSignin }: { onDone: () => void; onSwitchToSignin: () => void }) {
   const { t } = useTranslation();
   const { signUp } = useAuth();
+  const toast = useToast();
+  const formRef = useRef<HTMLFormElement>(null);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -364,7 +375,12 @@ function SignUpForm({ onDone, onSwitchToSignin }: { onDone: () => void; onSwitch
     const ph = validatePhone(phone);      if (!ph.ok) next.phone = ph.message;
     const pw = validatePassword(password);if (!pw.ok) next.password = pw.message;
     setErrors(next);
-    if (Object.keys(next).length) return;
+    if (Object.keys(next).length) {
+      afterErrorsRender(formRef.current, (nInvalid) => {
+        if (nInvalid > 0) toast.push({ kind: 'error', message: 'Please fix the highlighted fields.' });
+      });
+      return;
+    }
 
     const normalizedPhone = normalizeRwandaPhone(phone)!;
     try {
@@ -399,7 +415,7 @@ function SignUpForm({ onDone, onSwitchToSignin }: { onDone: () => void; onSwitch
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+    <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
       <TextField
         label={t('auth.fullName')}
         autoComplete="name"

@@ -56,6 +56,20 @@ export default function OverviewPage() {
   const pendingRequestCount = journeys.reduce((sum, j) => sum + j.bookings_count.requested, 0);
   const acceptedCount       = journeys.reduce((sum, j) => sum + j.bookings_count.accepted, 0);
 
+  // Recurrence "repost reminder" — for any recurring trip whose latest
+  // departure is within the last 36 hours OR up to 6 hours ahead, prompt
+  // the driver to post the next occurrence. Nothing is auto-created.
+  const REPOST_LOOKAHEAD_MS = 6 * 60 * 60 * 1000;   // 6 hours ahead
+  const REPOST_LOOKBACK_MS  = 36 * 60 * 60 * 1000;  // 36 hours behind
+  const now = Date.now();
+  const recurringDue = journeys
+    .filter((j) => j.recurrence !== 'once')
+    .filter((j) => {
+      const dep = new Date(j.departure_time).getTime();
+      return dep >= now - REPOST_LOOKBACK_MS && dep <= now + REPOST_LOOKAHEAD_MS;
+    })
+    .sort((a, b) => a.departure_time.localeCompare(b.departure_time));
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
       <header>
@@ -75,6 +89,50 @@ export default function OverviewPage() {
             <Link to="/dashboard/verification"><Button>Verify now</Button></Link>
           </div>
         </Card>
+      )}
+
+      {/* Recurrence reminders — for pilot V1 the recurrence field is a
+          "remind me to post the next one" signal, not an auto-scheduler.
+          Driver clicks "Post next", the form is pre-filled with the recurring
+          trip's route/vehicle/price, and the next departure_time is proposed
+          from the recurrence cadence. */}
+      {showDriver && recurringDue.length > 0 && (
+        <div className="grid gap-3">
+          {recurringDue.map((j) => {
+            const nextIso = nextOccurrenceIso(j.departure_time, j.recurrence);
+            const nextText = nextIso ? formatDateTime(nextIso).full : 'soon';
+            const params = new URLSearchParams({
+              from_id: j.origin_location_id ?? '',
+              to_id:   j.destination_location_id ?? '',
+              vehicle_id: j.vehicle_id ?? '',
+              seats: String(j.seats_total),
+              contribution: String(j.contribution_per_seat ?? j.suggested_contribution),
+              departure: nextIso ?? '',
+              recurrence: j.recurrence,
+            });
+            return (
+              <Card key={j.id} className="!bg-brand/10 !border-brand/25">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                  <div className="min-w-0">
+                    <div className="t-caption">Recurring trip</div>
+                    <CardTitle>Post the next {j.origin_text} → {j.destination_text}?</CardTitle>
+                    <CardDescription>
+                      Cadence: {j.recurrence}. Suggested next departure: {nextText}.
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Link to={`/dashboard/journeys/new?${params.toString()}`}>
+                      <Button size="sm">Post next</Button>
+                    </Link>
+                    <Link to={`/dashboard/journeys/${j.id}/manage`}>
+                      <Button size="sm" variant="ghost">Edit / cancel</Button>
+                    </Link>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       )}
 
       {loading ? (
@@ -207,6 +265,30 @@ function DriverCard({ activeCount, pendingRequests, accepted }: { activeCount: n
       </div>
     </Card>
   );
+}
+
+/**
+ * Compute the "next occurrence" ISO for a recurring trip. Honest V1 rules
+ * matching the enum values used everywhere:
+ *   daily     → +1 day
+ *   weekly    → +7 days
+ *   weekdays  → next Mon..Fri
+ *   weekends  → next Sat..Sun
+ *   once      → null (nothing to repost)
+ * Time of day is preserved from the previous departure.
+ */
+function nextOccurrenceIso(prevIso: string, rec: string): string | null {
+  if (rec === 'once' || !rec) return null;
+  const prev = new Date(prevIso);
+  const advance = (d: Date, days: number) => { const c = new Date(d); c.setDate(c.getDate() + days); return c; };
+  let candidate = advance(prev, 1);
+  const isWeekday = (d: Date) => { const w = d.getDay(); return w >= 1 && w <= 5; };
+  const isWeekend = (d: Date) => { const w = d.getDay(); return w === 0 || w === 6; };
+  if (rec === 'daily')    return candidate.toISOString();
+  if (rec === 'weekly')   return advance(prev, 7).toISOString();
+  if (rec === 'weekdays') { while (!isWeekday(candidate)) candidate = advance(candidate, 1); return candidate.toISOString(); }
+  if (rec === 'weekends') { while (!isWeekend(candidate)) candidate = advance(candidate, 1); return candidate.toISOString(); }
+  return null;
 }
 
 function StatTile({ label, value, tone }: { label: string; value: number; tone: 'brand' | 'warning' | 'muted' }) {

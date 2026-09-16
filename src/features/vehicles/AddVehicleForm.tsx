@@ -5,6 +5,7 @@ import { Button } from '@/components/ds/Button';
 import { Card, CardDescription, CardTitle } from '@/components/ds/Card';
 import { useAuth } from '@/auth/useAuth';
 import { useToast } from '@/components/ds/Toast';
+import { afterErrorsRender } from '@/lib/formErrors';
 import {
   ACCEPTED_VEHICLE_PHOTO_TYPES,
   MAX_VEHICLE_PHOTO_BYTES,
@@ -42,6 +43,7 @@ export function AddVehicleForm({ onCreated, onCancel }: Props) {
   const { user } = useAuth();
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
@@ -114,7 +116,12 @@ export function AddVehicleForm({ onCreated, onCancel }: Props) {
     const st = Number(seats);
     if (!seats || Number.isNaN(st) || st < 1 || st > 20) next.seats = 'Between 1 and 20.';
     setErrors(next);
-    if (Object.keys(next).length) return;
+    if (Object.keys(next).length) {
+      afterErrorsRender(formRef.current, (n) => {
+        if (n > 0) toast.push({ kind: 'error', message: 'Please fix the highlighted fields.' });
+      });
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -161,7 +168,7 @@ export function AddVehicleForm({ onCreated, onCancel }: Props) {
         happening in a later phase — for the pilot you can post while it's pending.
       </CardDescription>
 
-      <form onSubmit={onSubmit} className="mt-5 grid gap-4" noValidate>
+      <form ref={formRef} onSubmit={onSubmit} className="mt-5 grid gap-4" noValidate>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <TextField label="Make" placeholder="Toyota" value={make} onChange={(e) => setMake(e.target.value)} error={errors.make} />
           <TextField label="Model" placeholder="RAV4" value={model} onChange={(e) => setModel(e.target.value)} error={errors.model} />
