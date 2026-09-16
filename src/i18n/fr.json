@@ -1,0 +1,113 @@
+{
+  "app": {
+    "name": "TUJYANE",
+    "tagline": "Partagez le trajet, partagez le coût.",
+    "slogan": "Partagez le trajet. Divisez le coût."
+  },
+  "nav": {
+    "search": "Rechercher",
+    "post": "Publier un trajet",
+    "trips": "Mes trajets",
+    "journeys": "Mes trajets publiés",
+    "login": "Se connecter",
+    "signup": "Créer un compte",
+    "signOut": "Se déconnecter",
+    "account": "Compte"
+  },
+  "auth": {
+    "welcome": "Bienvenue sur TUJYANE",
+    "welcomeSub": "Vous pouvez chercher des trajets sans compte. Connectez-vous pour publier un trajet ou réserver une place.",
+    "signIn": "Se connecter",
+    "createAccount": "Créer un compte",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "phone": "Téléphone",
+    "fullName": "Nom complet",
+    "roleIntent": "Je souhaite utiliser TUJYANE comme",
+    "role": {
+      "passenger": "Passager",
+      "passengerDesc": "Trouver et réserver des trajets",
+      "driver": "Conducteur",
+      "driverDesc": "Proposer des places sur mes trajets",
+      "both": "Les deux",
+      "bothDesc": "Parfois je conduis, parfois je voyage"
+    },
+    "termsHint": "En créant un compte, vous acceptez les règles de TUJYANE.",
+    "phoneHint": "Numéro rwandais : +250… ou 07…",
+    "passwordHint": "Au moins 8 caractères. Mélangez lettres, chiffres et symboles."
+  },
+  "cookie": {
+    "title": "Nous utilisons des cookies",
+    "body": "TUJYANE utilise des cookies pour vous garder connecté et comprendre l'utilisation de l'application.",
+    "accept": "Tout accepter",
+    "reject": "Refuser les non-essentiels",
+    "prefs": "Préférences"
+  },
+  "styleguide": {
+    "title": "Système de design TUJYANE",
+    "subtitle": "Chaque composant dans chaque état."
+  },
+  "actions": {
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "continue": "Continuer",
+    "loading": "Chargement…"
+  },
+  "toasts": {
+    "sample": {
+      "success": "Trajet publié avec succès.",
+      "error": "Une erreur s'est produite. Réessayez.",
+      "info": "Votre session a été rafraîchie."
+    }
+  },
+  "landing": {
+    "heroKicker": "Le réseau de covoiturage du Rwanda",
+    "heroValueProp": "Trouvez une place ou partagez la vôtre à travers le Rwanda. Équitable, vérifié, toujours dans votre monnaie.",
+    "searchCta": "Chercher un trajet",
+    "browseHint": "Aucun compte requis pour parcourir — vous ne vous connecterez qu'au moment de réserver ou de publier.",
+    "how": {
+      "title": "Comment ça marche",
+      "sub": "Trois étapes, aucune surprise.",
+      "step1Title": "1. Chercher",
+      "step1Body": "Choisissez départ et destination — nous suggérons une contribution équitable par place selon la distance et le véhicule.",
+      "step2Title": "2. Demander",
+      "step2Body": "Envoyez une demande de place. Le conducteur accepte et vous recevez un code d'embarquement privé à 4 chiffres.",
+      "step3Title": "3. Embarquer",
+      "step3Body": "Le jour du trajet, montrez le code au conducteur. Il le confirme — c'est votre preuve d'embarquement."
+    },
+    "corridorsTitle": "Trajets populaires",
+    "corridorsSub": "Corridors les plus demandés cette semaine.",
+    "trust": {
+      "title": "Bâti sur la confiance",
+      "sub": "Toutes les protections activées par défaut.",
+      "verified": "Conducteurs vérifiés",
+      "verifiedBody": "L'identité, le permis et les papiers du véhicule de chaque conducteur sont vérifiés par un humain avant sa première publication.",
+      "code": "Codes d'embarquement",
+      "codeBody": "Chaque réservation acceptée reçoit un code privé à 4 chiffres. Pas de code, pas de trajet.",
+      "ratings": "Évaluations bilatérales",
+      "ratingsBody": "Conducteurs et passagers se notent mutuellement après chaque trajet. La réputation se gagne.",
+      "fair": "Contribution équitable",
+      "fairBody": "Le système calcule une fourchette équitable par place. Les conducteurs ne fixent jamais un prix injuste."
+    },
+    "drive": {
+      "kicker": "Pour les conducteurs",
+      "title": "Transformez des sièges vides en carburant partagé.",
+      "body": "Publiez un trajet en moins d'une minute. Choisissez vos passagers, gardez le contrôle — et aidez à couvrir l'essence.",
+      "cta": "Devenir conducteur"
+    },
+    "footer": {
+      "product": "Produit",
+      "company": "Entreprise",
+      "legal": "Légal",
+      "search": "Chercher un trajet",
+      "post": "Publier un trajet",
+      "styleguide": "Système de design",
+      "about": "À propos de TUJYANE",
+      "contact": "Contact",
+      "terms": "Règles de la communauté",
+      "privacy": "Confidentialité",
+      "language": "Langue",
+      "rights": "TUJYANE — tous droits réservés."
+    }
+  }
+}

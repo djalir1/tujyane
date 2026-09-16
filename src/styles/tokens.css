@@ -1,0 +1,95 @@
+/*
+ * Design tokens.
+ * Values are R G B triplets so Tailwind can compose them with alpha:
+ *   background-color: rgb(var(--bg) / <alpha-value>)
+ * The `data-theme` attribute on <html> is authoritative; `:root` carries the
+ * dark defaults so the very first paint before ThemeProvider mounts stays dark.
+ */
+
+:root,
+:root[data-theme='dark'] {
+  --bg:            10  15  22;
+  --bg-elevated:   18  26  36;
+  --surface:       24  34  46;
+  --surface-hover: 32  44  60;
+  --border:        44  58  76;
+  --border-strong: 66  84 106;
+
+  --text:         240 244 250;
+  --text-muted:   156 170 187;
+  --text-subtle:  110 124 141;
+  --text-inverse:  15  23  35;
+
+  --brand:         46 158  58;   /* #2E9E3A */
+  --brand-hover:   40 138  51;
+  --brand-fg:     255 255 255;
+
+  --accent:        59 130 246;   /* used sparingly; navy is UI accent */
+  --navy:          22  48  91;   /* #16305B */
+  --navy-hover:    17  38  73;
+
+  --success:       46 158  58;
+  --danger:       232  74  60;
+  --danger-soft:   56  22  22;
+  --warning:      245 158  11;
+
+  --ring:          46 158  58;
+
+  --glass-bg:      18  26  36;   /* used with alpha for glassy accents */
+  --shadow-color:   0   0   0;
+}
+
+:root[data-theme='light'] {
+  --bg:           245 247 250;
+  --bg-elevated:  255 255 255;
+  --surface:      255 255 255;
+  --surface-hover:245 247 251;
+  --border:       225 230 238;
+  --border-strong:196 204 216;
+
+  --text:          14  22  35;
+  --text-muted:    83  94 111;
+  --text-subtle:  125 138 156;
+  --text-inverse: 255 255 255;
+
+  --brand:         39 137  50;
+  --brand-hover:   32 118  43;
+  --brand-fg:     255 255 255;
+
+  --accent:        29  78 216;
+  --navy:          22  48  91;
+  --navy-hover:    15  36  73;
+
+  --success:       39 137  50;
+  --danger:       200  40  40;
+  --danger-soft:  253 236 236;
+  --warning:      194  95   9;
+
+  --ring:          39 137  50;
+
+  --glass-bg:     255 255 255;
+  --shadow-color:  15  23  35;
+}
+
+/* Smooth theme swap without animating page churn. */
+html {
+  color-scheme: dark;
+}
+html[data-theme='light'] { color-scheme: light; }
+
+html, body { background-color: rgb(var(--bg)); color: rgb(var(--text)); }
+
+/* Global focus ring — never rely on browser default blue. */
+:where(button, a, [role='button'], input, select, textarea, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid rgb(var(--ring));
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Prevent horizontal scroll from any child. */
+html, body { overflow-x: hidden; }
+
+/* Reduce motion respect. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}

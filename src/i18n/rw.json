@@ -1,0 +1,113 @@
+{
+  "app": {
+    "name": "TUJYANE",
+    "tagline": "Sangira urugendo, mugabane ikiguzi.",
+    "slogan": "Sangira urugendo. Mugabane ikiguzi."
+  },
+  "nav": {
+    "search": "Shakisha",
+    "post": "Tanga urugendo",
+    "trips": "Ingendo zanjye",
+    "journeys": "Ingendo natanze",
+    "login": "Injira",
+    "signup": "Fungura konti",
+    "signOut": "Sohoka",
+    "account": "Konti"
+  },
+  "auth": {
+    "welcome": "Murakaza neza kuri TUJYANE",
+    "welcomeSub": "Ushobora gushakisha ingendo utabanje kwiyandikisha. Injira kugira ngo utange urugendo cyangwa ubuke intebe.",
+    "signIn": "Injira",
+    "createAccount": "Fungura konti",
+    "email": "Imeyili",
+    "password": "Ijambo ry'ibanga",
+    "phone": "Telefoni",
+    "fullName": "Amazina yombi",
+    "roleIntent": "Nifuza gukoresha TUJYANE nka",
+    "role": {
+      "passenger": "Umugenzi",
+      "passengerDesc": "Shakisha kandi ubuke intebe",
+      "driver": "Umushoferi",
+      "driverDesc": "Tanga intebe mu rugendo rwanjye",
+      "both": "Byombi",
+      "bothDesc": "Rimwe na rimwe ndatwara, rimwe na rimwe ndagenzwa"
+    },
+    "termsHint": "Ufungura konti wemera amategeko ya TUJYANE.",
+    "phoneHint": "Nimero yo mu Rwanda: +250… cyangwa 07…",
+    "passwordHint": "Nibura inyuguti 8. Vanga inyuguti, imibare n'ibimenyetso."
+  },
+  "cookie": {
+    "title": "Dukoresha cookies",
+    "body": "TUJYANE ikoresha cookies kugira ngo ikomeze kukuzi no gusobanukirwa uko porogaramu ikoreshwa.",
+    "accept": "Emera byose",
+    "reject": "Nanga bidakenewe",
+    "prefs": "Amahitamo"
+  },
+  "styleguide": {
+    "title": "Sisitemu y'ishushanya rya TUJYANE",
+    "subtitle": "Ibice byose mu bihe byose."
+  },
+  "actions": {
+    "cancel": "Kuraguza",
+    "save": "Bika",
+    "continue": "Komeza",
+    "loading": "Biratangira…"
+  },
+  "toasts": {
+    "sample": {
+      "success": "Urugendo rwatanzwe neza.",
+      "error": "Habaye ikibazo. Ongera ugerageze.",
+      "info": "Uburyo bwawe bwongewe."
+    }
+  },
+  "landing": {
+    "heroKicker": "Umuyoboro w'ingendo mu Rwanda",
+    "heroValueProp": "Shakisha intebe cyangwa utange izawe mu Rwanda hose. Ku giciro cy'ukuri, hifashishijwe abemewe, mu mafaranga yawe.",
+    "searchCta": "Shakisha urugendo",
+    "browseHint": "Ntugomba konti kugira ngo urebe — uzayifungura gusa igihe usaba cyangwa utanga urugendo.",
+    "how": {
+      "title": "Uko bikora",
+      "sub": "Intambwe eshatu gusa, nta guhangayika.",
+      "step1Title": "1. Shakisha",
+      "step1Body": "Hitamo aho utangirira n'aho ugana — dukubwira igiciro cy'ukuri kuri buri ntebe hakurikijwe intera n'imodoka.",
+      "step2Title": "2. Saba",
+      "step2Body": "Ohereza icyifuzo cy'intebe. Umushoferi aremera, hanyuma uhabwa kode y'ibanga y'imibare 4.",
+      "step3Title": "3. Uinjire",
+      "step3Body": "Ku munsi w'urugendo, wereka umushoferi kode. Ayemeza — icyo ni ikimenyetso cy'uko winjiye."
+    },
+    "corridorsTitle": "Ingendo zikundwa",
+    "corridorsSub": "Ingendo zishakishwa cyane muri iki cyumweru.",
+    "trust": {
+      "title": "Ishingiye ku kwizerana",
+      "sub": "Buri kirinzi cy'umutekano gikora buri gihe.",
+      "verified": "Abashoferi bemewe",
+      "verifiedBody": "Buri mushoferi, indangamuntu ye, uruhushya n'inyandiko z'imodoka birebwa n'umuntu mbere y'urugendo rwe rwa mbere.",
+      "code": "Kode zo kwinjira",
+      "codeBody": "Buri buke bwemewe buhabwa kode y'ibanga y'imibare 4. Nta kode, nta rugendo.",
+      "ratings": "Amanota y'impande zombi",
+      "ratingsBody": "Abashoferi n'abagenzi bahererekanya amanota nyuma ya buri rugendo. Izina ryiza ryunguka.",
+      "fair": "Ikiguzi cy'ukuri",
+      "fairBody": "Sisitemu ibara igiciro cy'ukuri buri ntebe. Umushoferi ntahita ashyiraho igiciro kidakwiye."
+    },
+    "drive": {
+      "kicker": "Ku bashoferi",
+      "title": "Hindura intebe zisigaye amafaranga yo kunywa lisansi.",
+      "body": "Tanga urugendo mu munota. Emera abagenzi ushatse, komera imodoka yawe — kandi ubone ubufasha bwa lisansi.",
+      "cta": "Ba umushoferi"
+    },
+    "footer": {
+      "product": "Igicuruzwa",
+      "company": "Ikigo",
+      "legal": "Amategeko",
+      "search": "Shakisha ingendo",
+      "post": "Tanga urugendo",
+      "styleguide": "Sisitemu y'ishushanya",
+      "about": "Kuri TUJYANE",
+      "contact": "Ihuriro",
+      "terms": "Amategeko y'umuryango",
+      "privacy": "Ibanga",
+      "language": "Ururimi",
+      "rights": "TUJYANE — uburenganzira bwose bwihariwe."
+    }
+  }
+}

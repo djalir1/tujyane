@@ -1,0 +1,113 @@
+{
+  "app": {
+    "name": "TUJYANE",
+    "tagline": "Share the ride, share the cost.",
+    "slogan": "Share the ride. Split the cost."
+  },
+  "nav": {
+    "search": "Search",
+    "post": "Post a trip",
+    "trips": "My trips",
+    "journeys": "My journeys",
+    "login": "Log in",
+    "signup": "Create account",
+    "signOut": "Sign out",
+    "account": "Account"
+  },
+  "auth": {
+    "welcome": "Welcome to TUJYANE",
+    "welcomeSub": "You can browse and search rides without an account. Sign in to post a journey or book a seat.",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "email": "Email",
+    "password": "Password",
+    "phone": "Phone",
+    "fullName": "Full name",
+    "roleIntent": "I want to use TUJYANE as",
+    "role": {
+      "passenger": "Passenger",
+      "passengerDesc": "Find and book rides",
+      "driver": "Driver",
+      "driverDesc": "Offer seats on my trips",
+      "both": "Both",
+      "bothDesc": "Some days I drive, some I ride"
+    },
+    "termsHint": "By creating an account you agree to TUJYANE's community rules.",
+    "phoneHint": "Rwandan number: +250… or 07…",
+    "passwordHint": "At least 8 characters. Mix letters, numbers and symbols for a stronger password."
+  },
+  "cookie": {
+    "title": "We use cookies",
+    "body": "TUJYANE uses cookies to keep you signed in and to understand how the app is used. You can change your choice any time.",
+    "accept": "Accept all",
+    "reject": "Reject non-essential",
+    "prefs": "Preferences"
+  },
+  "styleguide": {
+    "title": "TUJYANE design system",
+    "subtitle": "Every component in every state. Toggle themes with the icon in the header."
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "continue": "Continue",
+    "loading": "Loading…"
+  },
+  "toasts": {
+    "sample": {
+      "success": "Trip posted successfully.",
+      "error": "Something went wrong. Try again.",
+      "info": "Your session was refreshed."
+    }
+  },
+  "landing": {
+    "heroKicker": "Rwanda's carpool network",
+    "heroValueProp": "Find a seat or share yours across Rwanda. Fair, verified, and always in your own currency.",
+    "searchCta": "Find a ride",
+    "browseHint": "No account needed to browse — you'll only sign in when you request or post.",
+    "how": {
+      "title": "How it works",
+      "sub": "Three steps, no surprises.",
+      "step1Title": "1. Search",
+      "step1Body": "Pick your start and destination — we suggest fair per-seat contributions based on distance and vehicle.",
+      "step2Title": "2. Request",
+      "step2Body": "Send a seat request. The driver accepts, and you get a private 4-digit boarding code.",
+      "step3Title": "3. Board",
+      "step3Body": "On the day, show the code to the driver. They confirm it — that's your proof of boarding."
+    },
+    "corridorsTitle": "Popular routes",
+    "corridorsSub": "Trending corridors this week.",
+    "trust": {
+      "title": "Built on trust",
+      "sub": "Every safety guardrail on by default.",
+      "verified": "Verified drivers",
+      "verifiedBody": "Every driver's ID, licence and vehicle papers are reviewed by a real human before their first post.",
+      "code": "Boarding codes",
+      "codeBody": "Every accepted booking gets a private 4-digit code. No code, no ride.",
+      "ratings": "Two-way ratings",
+      "ratingsBody": "Drivers and passengers rate each other after every trip. Reputations are earned.",
+      "fair": "Fair contributions",
+      "fairBody": "The system calculates a fair band per seat. Drivers never quote an unfair price."
+    },
+    "drive": {
+      "kicker": "For drivers",
+      "title": "Turn empty seats into shared fuel money.",
+      "body": "Post a trip in under a minute. Accept the passengers you want, keep control of your car — and get help covering fuel.",
+      "cta": "Become a driver"
+    },
+    "footer": {
+      "product": "Product",
+      "company": "Company",
+      "legal": "Legal",
+      "search": "Search rides",
+      "post": "Post a trip",
+      "styleguide": "Design system",
+      "about": "About TUJYANE",
+      "contact": "Contact",
+      "terms": "Community rules",
+      "privacy": "Privacy",
+      "language": "Language",
+      "rights": "TUJYANE — all rights reserved."
+    }
+  }
+}

@@ -1,0 +1,44 @@
+@import './styles/tokens.css';
+@import './styles/typography.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* Stable, GPU-friendly loading pulse. Only opacity animates — no gradient
+ * background position, no size/transform change — so mobile devices don't
+ * jitter or reflow while the skeleton is on screen. */
+@keyframes tjSkeletonPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+.skeleton-pulse {
+  animation: tjSkeletonPulse 1.4s ease-in-out infinite;
+  will-change: opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-pulse { animation: none; opacity: 0.7; }
+}
+
+/* Themed Leaflet map: invert only the raster tile layer (not markers or
+ * polyline). Applying the filter to `.leaflet-tile-pane` keeps our custom
+ * brand-colored pins and polyline in their true colors. */
+.tj-map-dark .leaflet-tile-pane {
+  filter: invert(0.92) hue-rotate(180deg) saturate(0.7) brightness(0.95) contrast(0.95);
+}
+.tj-map-dark .leaflet-container { background: #0b1220; }
+.leaflet-container .leaflet-popup-content-wrapper {
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+}
