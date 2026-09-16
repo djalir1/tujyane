@@ -32,32 +32,49 @@ export type QueueEntry = {
   phone: string | null;
   is_verified_driver: boolean;
   pending_count: number;
+  /** Uploaded-but-not-yet-submitted count. Shown as a separate chip so admin
+   * can see when a driver is stuck at the "Send for verification" step —
+   * fixes the "queue is empty even though a driver uploaded" bug by making
+   * drafts visible instead of hidden. */
+  draft_count: number;
   first_submitted_at: string | null;
   latest_submitted_at: string | null;
 };
 
 /**
- * Returns drivers who have at least one pending document, most-recent first.
+ * Returns every driver with document activity that needs admin attention:
+ * pending review OR uploaded-but-not-yet-submitted (draft). Most-recent first.
  * Non-admin callers get an empty result because driver_documents RLS
  * restricts SELECT to owner + admins.
+ *
+ * Previously this only fetched status='pending' — which meant drafts (docs
+ * the driver uploaded but forgot to submit) were invisible to the admin and
+ * the queue looked empty even when a submission was clearly waiting to be
+ * nudged. Widened to include drafts, with a separate count so admins can see
+ * exactly what state the driver is in.
  */
 export async function listReviewQueue(): Promise<QueueEntry[]> {
   const { data: docs, error } = await supabase
     .from('driver_documents')
     .select('driver_id, created_at, status')
-    .eq('status', 'pending')
+    .in('status', ['pending', 'draft'])
     .order('created_at', { ascending: false });
   if (error) throw error;
 
-  const perDriver = new Map<string, { count: number; first: string; last: string }>();
+  const perDriver = new Map<string, { pending: number; draft: number; first: string; last: string }>();
   for (const d of (docs ?? []) as { driver_id: string; created_at: string; status: string }[]) {
     const cur = perDriver.get(d.driver_id);
     if (cur) {
-      cur.count += 1;
+      if (d.status === 'pending') cur.pending += 1;
+      else                        cur.draft   += 1;
       if (d.created_at < cur.first) cur.first = d.created_at;
       if (d.created_at > cur.last)  cur.last  = d.created_at;
     } else {
-      perDriver.set(d.driver_id, { count: 1, first: d.created_at, last: d.created_at });
+      perDriver.set(d.driver_id, {
+        pending: d.status === 'pending' ? 1 : 0,
+        draft:   d.status === 'draft'   ? 1 : 0,
+        first: d.created_at, last: d.created_at,
+      });
     }
   }
   const ids = [...perDriver.keys()];
@@ -70,18 +87,25 @@ export async function listReviewQueue(): Promise<QueueEntry[]> {
   if (pErr) throw pErr;
 
   return (profiles ?? []).map((p) => {
-    const stats = perDriver.get((p as { id: string }).id)!;
     const row = p as { id: string; full_name: string; phone: string | null; is_verified_driver: boolean };
+    const stats = perDriver.get(row.id)!;
     return {
       driver_id: row.id,
       full_name: row.full_name,
       phone: row.phone,
       is_verified_driver: row.is_verified_driver,
-      pending_count: stats.count,
+      pending_count: stats.pending,
+      draft_count: stats.draft,
       first_submitted_at: stats.first,
       latest_submitted_at: stats.last,
     };
-  }).sort((a, b) => (b.latest_submitted_at ?? '').localeCompare(a.latest_submitted_at ?? ''));
+  }).sort((a, b) => {
+    // Pending outranks draft-only; then most recent first.
+    const pa = a.pending_count > 0 ? 1 : 0;
+    const pb = b.pending_count > 0 ? 1 : 0;
+    if (pa !== pb) return pb - pa;
+    return (b.latest_submitted_at ?? '').localeCompare(a.latest_submitted_at ?? '');
+  });
 }
 
 export type DriverReviewBundle = {

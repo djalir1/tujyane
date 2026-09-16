@@ -52,22 +52,31 @@ function QueueRow({ entry }: { entry: QueueEntry }) {
   const submitted = entry.latest_submitted_at
     ? new Date(entry.latest_submitted_at).toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
     : '—';
+  const draftOnly = entry.pending_count === 0 && entry.draft_count > 0;
   return (
     <Card>
       <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-text truncate">
             {entry.full_name}
-            {entry.is_verified_driver && <span className="ml-1 text-xs text-brand">· verified</span>}
+            {entry.is_verified_driver && <span className="ml-1 text-xs text-brand">· personal verified</span>}
           </div>
           <div className="text-xs text-text-muted">
-            {entry.phone ?? '—'} · submitted {submitted}
+            {entry.phone ?? '—'} · last activity {submitted}
+            {draftOnly && <> · <span className="text-warning font-semibold">driver has not sent for review yet</span></>}
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="inline-flex items-center h-6 px-2 rounded-pill text-[10px] font-bold uppercase tracking-wider bg-warning/15 text-warning">
-            {entry.pending_count} pending
-          </span>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          {entry.pending_count > 0 && (
+            <span className="inline-flex items-center h-6 px-2 rounded-pill text-[10px] font-bold uppercase tracking-wider bg-warning/15 text-warning">
+              {entry.pending_count} pending
+            </span>
+          )}
+          {entry.draft_count > 0 && (
+            <span className="inline-flex items-center h-6 px-2 rounded-pill text-[10px] font-bold uppercase tracking-wider bg-surface-hover text-text-muted">
+              {entry.draft_count} draft
+            </span>
+          )}
           <Link to={`/admin/drivers/${entry.driver_id}`}>
             <Button size="sm">Review</Button>
           </Link>

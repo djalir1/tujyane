@@ -262,6 +262,21 @@ function mapCreateError(err: { message?: string }): Error {
   if (raw.includes('contribution_above_band')) {
     return new Error('That contribution is above the allowed range for this route.');
   }
+  if (raw.includes('contribution_above_bus_fare')) {
+    return new Error('That contribution is higher than the bus fare on this route — TUJYANE must stay cheaper than the bus.');
+  }
+  if (raw.includes('driver_not_verified')) {
+    return new Error('Your driver profile is not verified yet. Upload your National ID and Driving license and wait for approval.');
+  }
+  if (raw.includes('vehicle_not_verified')) {
+    return new Error('That car is pending verification. Upload the vehicle registration and a car photo for it, then wait for admin approval.');
+  }
+  if (raw.includes('vehicle_owner_mismatch')) {
+    return new Error('That car does not belong to your account.');
+  }
+  if (raw.includes('vehicle_required')) {
+    return new Error('Pick which car you will drive for this journey.');
+  }
   return new Error(raw);
 }
 

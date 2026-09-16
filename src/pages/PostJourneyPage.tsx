@@ -68,23 +68,58 @@ export default function PostJourneyPage() {
     );
   }
 
-  // Verification gate. Every driver must upload + get approved on national_id
-  // and driving_license before posting a journey. During pilot this is a
-  // product decision — no free-posting.
-  if (!profile?.is_verified_driver) {
+  // Verification gate — must match the DB reality exactly. Two independent
+  // gates on the server (migration 0016 + 0021):
+  //   1. profile.is_verified_driver — from personal docs (national_id +
+  //      driving_license both approved).
+  //   2. at least one vehicles.is_verified — from vehicle_registration +
+  //      car_photo both approved for the SAME vehicle.
+  // Missing either → DB refuses INSERT. The message must name exactly which
+  // side is blocking so the driver isn't left staring at "verified ✓" on
+  // one page and "not verified" on another.
+  const personalVerified = Boolean(profile?.is_verified_driver);
+  const anyVehicleVerified = vehicles.some((v) => v.is_verified);
+  const hasAnyVehicle = vehicles.length > 0;
+
+  if (!personalVerified || !anyVehicleVerified) {
+    let title = 'Get verified first';
+    let description =
+      'You need approved personal documents AND at least one approved car before posting a journey. Usually under 24 hours.';
+    if (personalVerified && !hasAnyVehicle) {
+      title = 'Add a car to post a journey';
+      description = 'Your personal verification is approved. Add a vehicle, then upload its registration and a car photo — approving those verifies the car and unlocks posting.';
+    } else if (personalVerified && hasAnyVehicle && !anyVehicleVerified) {
+      title = 'Your car is pending verification';
+      description = 'Your personal verification is approved, but none of your cars are approved yet. Upload the vehicle registration and a clear car photo on the verification page, pick which car they belong to, then click "Send for verification". Approval unlocks posting on that car.';
+    } else if (!personalVerified) {
+      title = 'Personal verification is pending';
+      description = 'Upload your National ID and Driving license on the verification page. Once approved, you can add a car and post journeys.';
+    }
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
         <Card className="!bg-warning/10 !border-warning/30">
           <div className="t-caption">Driver</div>
-          <CardTitle>Get verified first</CardTitle>
-          <CardDescription>
-            Every driver must have an approved National ID and Driving license before posting.
-            It usually takes under 24 hours.
-          </CardDescription>
-          <div className="mt-4 flex gap-2">
-            <Button onClick={() => nav('/dashboard/verification')}>Complete verification</Button>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+          <div className="mt-4 flex gap-2 flex-wrap">
+            <Button onClick={() => nav('/dashboard/verification')}>Open verification page</Button>
             <Button variant="outline" onClick={() => nav('/dashboard')}>Back to overview</Button>
           </div>
+          {hasAnyVehicle && (
+            <div className="mt-4 border-t border-warning/30 pt-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Your cars</div>
+              <ul className="mt-2 space-y-1">
+                {vehicles.map((v) => (
+                  <li key={v.id} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-text truncate">{v.make} {v.model} · {v.plate_number}</span>
+                    <span className={v.is_verified ? 'text-brand font-semibold' : 'text-warning font-semibold'}>
+                      {v.is_verified ? 'Approved' : 'Pending verification'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </Card>
       </div>
     );
@@ -137,8 +172,11 @@ function JourneyForm({
   const [date, setDate] = useState<Date | null>(null);
   const [time, setTime] = useState<string | null>(null);
   const [recurrence, setRecurrence] = useState<Recurrence>('once');
-  const [vehicleId, setVehicleId] = useState<string | undefined>(vehicles[0]?.id);
-  const [seats, setSeats] = useState<string>(String(Math.min(4, vehicles[0]?.seats ?? 4)));
+  // Default to the driver's FIRST VERIFIED vehicle — an unverified car would
+  // be refused at INSERT and confuse the driver.
+  const firstVerified = vehicles.find((v) => v.is_verified);
+  const [vehicleId, setVehicleId] = useState<string | undefined>(firstVerified?.id);
+  const [seats, setSeats] = useState<string>(String(Math.min(4, firstVerified?.seats ?? 4)));
   const [contribution, setContribution] = useState<string>('');
   const [contributionDirty, setContributionDirty] = useState(false);
   const [luggage, setLuggage] = useState(true);
@@ -252,12 +290,14 @@ function JourneyForm({
     }
   }
 
-  const vehicleOptions = vehicles.map((v) => ({
+  // Only verified vehicles are pickable. Unverified ones would be refused by
+  // the DB gate (guard_journey_insert_verified), so we hide them here rather
+  // than let the driver submit and hit a wall.
+  const verifiedVehicles = vehicles.filter((v) => v.is_verified);
+  const vehicleOptions = verifiedVehicles.map((v) => ({
     value: v.id,
     label: `${v.make} ${v.model}${v.year ? ` · ${v.year}` : ''}`,
-    description: v.is_verified
-      ? `${v.seats} seats · ${v.energy_type}`
-      : `${v.seats} seats · ${v.energy_type} · Pending verification`,
+    description: `${v.seats} seats · ${v.energy_type}`,
   }));
 
   return (

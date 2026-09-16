@@ -3,24 +3,30 @@ import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardTitle } from '@/components/ds/Card';
 import { Button } from '@/components/ds/Button';
 import { Skeleton } from '@/components/ds/Skeleton';
+import { Select } from '@/components/ds/Select';
 import { useToast } from '@/components/ds/Toast';
 import { useAuth } from '@/auth/useAuth';
 import {
-  latestByType, listMyDocuments, REQUIRED_DOCS, submitDocumentsForReview, uploadDocument,
+  isVehicleDocType, latestByType, listMyDocuments, REQUIRED_DOCS,
+  submitDocumentsForReview, uploadDocument,
   type DocStatus, type DocType, type DriverDocument,
 } from '@/features/verification/api';
+import { listMyVehicles, type Vehicle } from '@/features/vehicles/api';
 import { useDataFetch } from '@/lib/useDataFetch';
 
-type Bundle = { docs: DriverDocument[] };
+type Bundle = { docs: DriverDocument[]; vehicles: Vehicle[] };
 
 export default function DriverVerificationPage() {
   const { user, profile, refreshProfile } = useAuth();
   const toast = useToast();
 
   const fetcher = useCallback(async (): Promise<Bundle> => {
-    if (!user) return { docs: [] };
-    const docs = await listMyDocuments(user.id);
-    return { docs };
+    if (!user) return { docs: [], vehicles: [] };
+    const [docs, vehicles] = await Promise.all([
+      listMyDocuments(user.id),
+      listMyVehicles(user.id),
+    ]);
+    return { docs, vehicles };
   }, [user]);
 
   const onError = useCallback(
@@ -38,6 +44,8 @@ export default function DriverVerificationPage() {
   );
 
   const latest = latestByType(data?.docs ?? []);
+  const vehicles = data?.vehicles ?? [];
+  const anyVehicleVerified = vehicles.some((v) => v.is_verified);
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-4">
@@ -46,8 +54,9 @@ export default function DriverVerificationPage() {
         <h1 className="t-h1 text-text mt-1">Get verified</h1>
         <p className="mt-2 text-sm text-text-muted max-w-xl">
           Upload these four documents. Reviews usually take under 24 hours.
-          You can keep posting journeys during pilot — they'll show as
-          "Pending verification" until approved.
+          Your personal verification and each car's verification are tracked
+          separately — approving your vehicle registration + car photo verifies
+          the specific car those documents are for.
         </p>
       </header>
 
@@ -60,7 +69,11 @@ export default function DriverVerificationPage() {
         </div>
       ) : (
         <>
-          <Banner isVerifiedDriver={Boolean(profile?.is_verified_driver)} latest={latest} />
+          <Banner
+            isVerifiedDriver={Boolean(profile?.is_verified_driver)}
+            anyVehicleVerified={anyVehicleVerified}
+            latest={latest}
+          />
 
           <div className="grid gap-3">
             {REQUIRED_DOCS.map(({ type, label, description }) => (
@@ -70,6 +83,7 @@ export default function DriverVerificationPage() {
                 label={label}
                 description={description}
                 doc={latest[type] ?? null}
+                vehicles={vehicles}
                 onUploaded={async () => {
                   await refetch();
                   await refreshProfile();
@@ -77,6 +91,8 @@ export default function DriverVerificationPage() {
               />
             ))}
           </div>
+
+          <VehicleStatusList vehicles={vehicles} />
 
           <SubmitForReviewStrip latest={latest} onSubmitted={async () => { await refetch(); await refreshProfile(); }} />
 
@@ -90,25 +106,49 @@ export default function DriverVerificationPage() {
   );
 }
 
-/* ---------------- Banner ---------------- */
+/* ---------------- Banner (honest about the two verifications) ---------------- */
 function Banner({
   isVerifiedDriver,
+  anyVehicleVerified,
   latest,
 }: {
   isVerifiedDriver: boolean;
+  anyVehicleVerified: boolean;
   latest: Partial<Record<DocType, DriverDocument>>;
 }) {
   const rejected = REQUIRED_DOCS.filter((r) => latest[r.type]?.status === 'rejected').length;
   const pending  = REQUIRED_DOCS.filter((r) => latest[r.type]?.status === 'pending').length;
 
-  if (isVerifiedDriver && rejected === 0) {
+  // ONLY show the full-green "You're verified" banner when BOTH sides pass —
+  // otherwise the driver would tap "Post a journey" and hit the vehicle gate.
+  if (isVerifiedDriver && anyVehicleVerified && rejected === 0) {
     return (
       <Card className="!bg-brand/10 !border-brand/30">
         <div className="flex items-center gap-3">
           <IconCheck />
           <div>
             <CardTitle>You're verified ✓</CardTitle>
-            <CardDescription>Your journeys now display a verified driver badge.</CardDescription>
+            <CardDescription>Both your driver profile and at least one car are approved. You can post journeys.</CardDescription>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // Partial: personal is done but no car yet. This is the exact contradiction
+  // the pilot bug report called out — surface it explicitly.
+  if (isVerifiedDriver && !anyVehicleVerified) {
+    return (
+      <Card className="!bg-warning/10 !border-warning/30">
+        <div className="flex items-center gap-3">
+          <IconClock />
+          <div>
+            <CardTitle>Personal verification approved — car still pending</CardTitle>
+            <CardDescription>
+              Your national ID and driving license are approved, but no vehicle
+              is verified yet. Approving vehicle registration + car photo for a
+              specific car unlocks posting journeys on that car.
+            </CardDescription>
           </div>
         </div>
       </Card>
@@ -150,14 +190,46 @@ function Banner({
   );
 }
 
+/* ---------------- Per-vehicle status list ---------------- */
+function VehicleStatusList({ vehicles }: { vehicles: Vehicle[] }) {
+  if (vehicles.length === 0) return null;
+  return (
+    <Card>
+      <CardTitle>Your cars</CardTitle>
+      <CardDescription>Each car is verified separately. Vehicle docs above unlock the car you selected.</CardDescription>
+      <div className="mt-4 grid gap-2">
+        {vehicles.map((v) => (
+          <div key={v.id} className="flex items-center justify-between gap-3 rounded-field border border-border bg-surface px-3 py-2">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-text truncate">
+                {v.make} {v.model}{v.year ? ` · ${v.year}` : ''}
+              </div>
+              <div className="text-xs text-text-muted truncate">{v.plate_number}{v.color ? ` · ${v.color}` : ''}</div>
+            </div>
+            <span
+              className={[
+                'inline-flex items-center h-6 px-2.5 rounded-pill text-[10px] font-bold uppercase tracking-wider',
+                v.is_verified ? 'bg-brand/15 text-brand' : 'bg-warning/15 text-warning',
+              ].join(' ')}
+            >
+              {v.is_verified ? 'Approved' : 'Pending'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 /* ---------------- Doc row + upload control ---------------- */
 function DocRow({
-  type, label, description, doc, onUploaded,
+  type, label, description, doc, vehicles, onUploaded,
 }: {
   type: DocType;
   label: string;
   description: string;
   doc: DriverDocument | null;
+  vehicles: Vehicle[];
   onUploaded: () => void | Promise<void>;
 }) {
   const { user } = useAuth();
@@ -165,14 +237,31 @@ function DocRow({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(false);
+  // For vehicle docs the driver must pick which car this doc is for. If they
+  // only have one, we default to it silently.
+  const singleVehicle = vehicles.length === 1 ? vehicles[0]?.id ?? '' : '';
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(doc?.vehicle_id ?? singleVehicle);
+  const isVehicleDoc = isVehicleDocType(type);
 
   const status: DocStatus | 'none' = doc?.status ?? 'none';
 
   async function submit(file: File) {
     if (!user) return;
+    // Vehicle-doc integrity check — server also enforces, but bail early with
+    // a friendly message rather than the storage upload happening for nothing.
+    if (isVehicleDoc) {
+      if (vehicles.length === 0) {
+        toast.push({ kind: 'error', message: 'Add a vehicle first, then upload its documents.' });
+        return;
+      }
+      if (!selectedVehicleId) {
+        toast.push({ kind: 'error', message: 'Pick which vehicle this document is for.' });
+        return;
+      }
+    }
     try {
       setBusy(true);
-      await uploadDocument(user.id, type, file);
+      await uploadDocument(user.id, type, file, isVehicleDoc ? selectedVehicleId : null);
       toast.push({ kind: 'success', title: 'Uploaded', message: `${label} saved. Click "Send for verification" when you're done uploading.` });
       await onUploaded();
     } catch (err) {
@@ -185,9 +274,6 @@ function DocRow({
 
   return (
     <Card>
-      {/* Two-column at >=sm: text left, upload zone right. On mobile they
-          stack vertically. min-w-0 on both columns lets long descriptions
-          truncate/wrap instead of pushing the upload zone off-screen. */}
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -195,9 +281,28 @@ function DocRow({
             <StatusPill status={status} />
           </div>
           <p className="mt-1 text-xs text-text-muted">{description}</p>
+          {isVehicleDoc && (
+            <div className="mt-3 max-w-sm">
+              <Select
+                label="For which vehicle?"
+                value={selectedVehicleId || undefined}
+                onChange={(v) => setSelectedVehicleId(v ?? '')}
+                options={vehicles.map((v) => ({
+                  value: v.id,
+                  label: `${v.make} ${v.model}${v.year ? ` · ${v.year}` : ''} · ${v.plate_number}`,
+                  description: v.is_verified ? 'Approved' : 'Pending verification',
+                }))}
+                placeholder={vehicles.length === 0 ? 'Add a vehicle first' : 'Pick your car'}
+                hint="Approving this document verifies the car you pick."
+              />
+            </div>
+          )}
           {doc && (
             <p className="mt-2 text-xs text-text-muted break-all">
               File: <span className="tabular-nums text-text">{doc.file_url.split('/').pop()}</span>
+              {doc.vehicle_id && vehicles.find((v) => v.id === doc.vehicle_id) && (
+                <> · linked to {vehicles.find((v) => v.id === doc.vehicle_id)?.make} {vehicles.find((v) => v.id === doc.vehicle_id)?.model}</>
+              )}
             </p>
           )}
           {status === 'rejected' && doc?.rejection_reason && (
@@ -219,7 +324,7 @@ function DocRow({
               'flex flex-col items-center justify-center gap-1 w-full sm:w-[200px] h-24 px-4',
               'rounded-field border-2 border-dashed cursor-pointer transition-colors',
               drag ? 'border-brand bg-brand/10' : 'border-border hover:border-text-muted bg-bg-elevated',
-              busy ? 'opacity-70 pointer-events-none' : '',
+              busy || (isVehicleDoc && !selectedVehicleId) ? 'opacity-70 pointer-events-none' : '',
             ].join(' ')}
           >
             <UploadIcon />
@@ -252,7 +357,8 @@ function DocRow({
 
 /**
  * Bottom strip: prompts the driver to explicitly "Send for verification" once
- * they've uploaded documents. Nothing lands in the admin queue until they do.
+ * they've uploaded documents. Nothing lands in the admin queue until they do
+ * — this was the second root cause of the empty-queue bug.
  */
 function SubmitForReviewStrip({
   latest,
@@ -268,7 +374,7 @@ function SubmitForReviewStrip({
 
   if (drafts === 0) return null;
 
-  const readyForReview = uploadedTotal >= 2; // must have at least national_id + driving_license
+  const readyForReview = uploadedTotal >= 2;
   return (
     <Card className="!bg-brand/10 !border-brand/30">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">

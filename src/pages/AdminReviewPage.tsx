@@ -10,7 +10,7 @@ import {
   approveDoc, approveVehicle, loadDriverReview, rejectDoc,
   type DriverReviewBundle,
 } from '@/features/admin/api';
-import { REQUIRED_DOCS, signedDocUrl, type DocType, type DriverDocument } from '@/features/verification/api';
+import { isVehicleDocType, REQUIRED_DOCS, signedDocUrl, type DocType, type DriverDocument } from '@/features/verification/api';
 
 export default function AdminReviewPage() {
   const { driverId = '' } = useParams();
@@ -69,21 +69,62 @@ export default function AdminReviewPage() {
           </Card>
 
           <section>
-            <h2 className="t-h3 text-text mt-2 mb-2">Documents</h2>
+            <h2 className="t-h3 text-text mt-2 mb-2">Personal documents</h2>
             <div className="grid gap-3">
-              {REQUIRED_DOCS.map(({ type, label }) => {
+              {REQUIRED_DOCS.filter((r) => !isVehicleDocType(r.type)).map(({ type, label }) => {
                 const doc = latestFor(type, docs);
                 return (
                   <DocReviewCard
                     key={type}
                     label={label}
                     doc={doc}
+                    vehicleLabel={null}
                     onApproved={refetch}
                     onRejectClick={() => setRejecting(doc)}
                   />
                 );
               })}
             </div>
+          </section>
+
+          <section>
+            <h2 className="t-h3 text-text mt-4 mb-2">Vehicle documents</h2>
+            {vehicles.length === 0 ? (
+              <p className="text-sm text-text-muted">Driver has no vehicles yet.</p>
+            ) : (
+              vehicles.map((v) => {
+                const vehicleLabel = `${v.make} ${v.model}${v.year ? ` · ${v.year}` : ''} · ${v.plate_number}`;
+                // Orphan check: any vehicle-type doc from this driver that
+                // isn't linked to a specific vehicle yet. Common for pre-Batch-V
+                // uploads. Admin needs to nudge the driver to re-upload.
+                const orphanNote = docs.some((d) => isVehicleDocType(d.doc_type) && d.vehicle_id === null)
+                  ? 'This driver has vehicle documents not linked to any specific car. They must re-upload with a vehicle chosen so approvals verify the right car.'
+                  : null;
+                return (
+                  <div key={v.id} className="mb-4">
+                    <div className="text-sm font-semibold text-text mb-2">{vehicleLabel}</div>
+                    <div className="grid gap-3">
+                      {REQUIRED_DOCS.filter((r) => isVehicleDocType(r.type)).map(({ type, label }) => {
+                        const doc = latestForVehicle(type, v.id, docs);
+                        return (
+                          <DocReviewCard
+                            key={`${v.id}-${type}`}
+                            label={label}
+                            doc={doc}
+                            vehicleLabel={vehicleLabel}
+                            onApproved={refetch}
+                            onRejectClick={() => setRejecting(doc)}
+                          />
+                        );
+                      })}
+                    </div>
+                    {orphanNote && (
+                      <p className="mt-2 text-xs text-warning">{orphanNote}</p>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </section>
 
           <section>
@@ -152,11 +193,20 @@ function latestFor(type: DocType, all: DriverDocument[]): DriverDocument | null 
   return filtered.reduce((a, b) => (a.created_at > b.created_at ? a : b));
 }
 
+function latestForVehicle(type: DocType, vehicleId: string, all: DriverDocument[]): DriverDocument | null {
+  const filtered = all.filter((d) => d.doc_type === type && d.vehicle_id === vehicleId);
+  if (filtered.length === 0) return null;
+  return filtered.reduce((a, b) => (a.created_at > b.created_at ? a : b));
+}
+
 function DocReviewCard({
-  label, doc, onApproved, onRejectClick,
+  label, doc, vehicleLabel, onApproved, onRejectClick,
 }: {
   label: string;
   doc: DriverDocument | null;
+  /** When present, this is a vehicle doc and we render the target vehicle
+   * name so admins are sure which car they're verifying. */
+  vehicleLabel: string | null;
   onApproved: () => Promise<void> | void;
   onRejectClick: () => void;
 }) {
@@ -185,6 +235,9 @@ function DocReviewCard({
       <div className="flex flex-col md:flex-row gap-4">
         <div className="md:w-72 shrink-0">
           <div className="text-sm font-semibold text-text">{label}</div>
+          {vehicleLabel && (
+            <div className="mt-0.5 text-[11px] font-medium text-text-muted">for {vehicleLabel}</div>
+          )}
           {doc ? (
             <>
               <div className="mt-1 text-xs text-text-muted">
