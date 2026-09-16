@@ -199,6 +199,16 @@ function latestForVehicle(type: DocType, vehicleId: string, all: DriverDocument[
   return filtered.reduce((a, b) => (a.created_at > b.created_at ? a : b));
 }
 
+/**
+ * Doc review card — one document at a time.
+ *
+ * FUTURE: an AI pre-screen (OCR + doc-authenticity heuristics) will run when
+ * a doc is submitted and post a summary here — "Extracted plate matches
+ * vehicle record", "Expiry date matches ID card issue date", etc. It will be
+ * ADVISORY only; the admin remains the final decision-maker. For the pilot
+ * this card is entirely manual: admin previews the file + the driver-entered
+ * data (issue/expiry/ref#) THEN approves. No blind approve.
+ */
 function DocReviewCard({
   label, doc, vehicleLabel, onApproved, onRejectClick,
 }: {
@@ -258,7 +268,18 @@ function DocReviewCard({
             {!doc ? (
               <span className="text-xs text-text-muted">No file yet</span>
             ) : signError ? (
-              <span className="text-xs text-danger">{signError}</span>
+              // Storage-side "Object not found" surfaces here. Historically
+              // was caused by driver_documents rows pointing at keys that
+              // don't exist in the bucket (seed-data mismatch). Present it as
+              // an actionable "ask the driver to re-upload" instead of a scary
+              // technical string.
+              <div className="text-center px-4">
+                <div className="text-xs font-semibold text-danger">File missing from storage</div>
+                <div className="text-[11px] text-text-muted mt-1 break-all">
+                  {signError.replace(/^statusCode.*?:\s*/i, '')}
+                </div>
+                <div className="text-[11px] text-text-muted mt-1">Ask the driver to re-upload this document.</div>
+              </div>
             ) : !signed ? (
               <Skeleton widthClass="w-3/5" heightClass="h-6" />
             ) : isPdf ? (
@@ -267,10 +288,41 @@ function DocReviewCard({
               </a>
             ) : (
               <a href={signed} target="_blank" rel="noreferrer" className="block h-full w-full">
-                <img src={signed} alt={label} className="h-full w-full object-contain bg-white" />
+                <img
+                  src={signed}
+                  alt={label}
+                  className="h-full w-full object-contain bg-white"
+                  onError={() => setSignError('Object not found in bucket.')}
+                />
               </a>
             )}
           </div>
+
+          {/* Data the driver entered — visible BEFORE the admin approves. */}
+          {doc && (doc.issue_date || doc.expiry_date || doc.doc_number) && (
+            <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+              {doc.issue_date && (
+                <div>
+                  <div className="t-caption">Issued</div>
+                  <div className="text-text font-semibold">{new Date(doc.issue_date).toLocaleDateString()}</div>
+                </div>
+              )}
+              {doc.expiry_date && (
+                <div>
+                  <div className="t-caption">Expires</div>
+                  <div className={['font-semibold', new Date(doc.expiry_date) < new Date() ? 'text-danger' : 'text-text'].join(' ')}>
+                    {new Date(doc.expiry_date).toLocaleDateString()}
+                  </div>
+                </div>
+              )}
+              {doc.doc_number && (
+                <div>
+                  <div className="t-caption">Ref #</div>
+                  <div className="text-text font-semibold break-all">{doc.doc_number}</div>
+                </div>
+              )}
+            </div>
+          )}
 
           {doc && doc.status === 'pending' && (
             <div className="mt-3 flex justify-end gap-2">

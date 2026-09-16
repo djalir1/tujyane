@@ -68,8 +68,19 @@ export async function createVehicle(userId: string, input: CreateVehicleInput): 
     })
     .select(VEHICLE_COLS)
     .single();
-  if (error) throw error;
+  if (error) throw mapVehicleError(error);
   return data as Vehicle;
+}
+
+function mapVehicleError(err: { message?: string; code?: string }): Error {
+  const raw = err.message ?? 'Could not add the vehicle.';
+  if (/vehicles_plate_unique_idx|duplicate key.*plate/i.test(raw)) {
+    return new Error('That plate number is already registered on TUJYANE.');
+  }
+  if (/vehicles_plate_rw_format/i.test(raw)) {
+    return new Error('Use the Rwandan plate format, e.g. RAB 123 A.');
+  }
+  return new Error(raw);
 }
 
 /**

@@ -6,6 +6,7 @@ import { Card, CardDescription, CardTitle } from '@/components/ds/Card';
 import { useAuth } from '@/auth/useAuth';
 import { useToast } from '@/components/ds/Toast';
 import { afterErrorsRender } from '@/lib/formErrors';
+import { normalisePlate, validatePlate } from '@/lib/validation';
 import {
   ACCEPTED_VEHICLE_PHOTO_TYPES,
   MAX_VEHICLE_PHOTO_BYTES,
@@ -112,7 +113,8 @@ export function AddVehicleForm({ onCreated, onCancel }: Props) {
     if (!model.trim())         next.model = 'Required.';
     const yr = Number(year);
     if (!year || Number.isNaN(yr) || yr < 1980 || yr > CURRENT_YEAR + 1) next.year = `Enter a year between 1980 and ${CURRENT_YEAR + 1}.`;
-    if (!plate.trim())         next.plate_number = 'Required.';
+    const plateCheck = validatePlate(plate);
+    if (!plateCheck.ok) next.plate_number = plateCheck.message;
     const st = Number(seats);
     if (!seats || Number.isNaN(st) || st < 1 || st > 20) next.seats = 'Between 1 and 20.';
     setErrors(next);
@@ -143,7 +145,7 @@ export function AddVehicleForm({ onCreated, onCancel }: Props) {
         make: make.trim(),
         model: model.trim(),
         year: yr,
-        plate_number: plate.trim().toUpperCase(),
+        plate_number: normalisePlate(plate),
         color: color.trim() || null,
         seats: st,
         energy_type: energy,

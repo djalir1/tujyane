@@ -7,7 +7,8 @@ import { Select } from '@/components/ds/Select';
 import { useToast } from '@/components/ds/Toast';
 import { useAuth } from '@/auth/useAuth';
 import {
-  isVehicleDocType, latestByType, listMyDocuments, REQUIRED_DOCS,
+  daysUntilExpiry, isExpired, isExpiringDocType, isVehicleDocType, latestByType,
+  latestForVehicle, listMyDocuments, REQUIRED_DOCS,
   submitDocumentsForReview, uploadDocument,
   type DocStatus, type DocType, type DriverDocument,
 } from '@/features/verification/api';
@@ -75,24 +76,74 @@ export default function DriverVerificationPage() {
             latest={latest}
           />
 
-          <div className="grid gap-3">
-            {REQUIRED_DOCS.map(({ type, label, description }) => (
-              <DocRow
-                key={type}
-                type={type}
-                label={label}
-                description={description}
-                doc={latest[type] ?? null}
-                vehicles={vehicles}
-                onUploaded={async () => {
-                  await refetch();
-                  await refreshProfile();
-                }}
-              />
-            ))}
-          </div>
+          {/* Section A — driver documents (person-level). Same for every car. */}
+          <section>
+            <h2 className="t-h3 text-text mt-2 mb-2">Driver documents</h2>
+            <p className="text-xs text-text-muted mb-3">
+              Personal identification. Reviewed once — applies to you regardless of which car you drive.
+            </p>
+            <div className="grid gap-3">
+              {REQUIRED_DOCS.filter((r) => !isVehicleDocType(r.type)).map(({ type, label, rwLabel, description }) => (
+                <DocRow
+                  key={type}
+                  type={type}
+                  label={label}
+                  rwLabel={rwLabel}
+                  description={description}
+                  doc={latest[type] ?? null}
+                  vehicles={vehicles}
+                  onUploaded={async () => {
+                    await refetch();
+                    await refreshProfile();
+                  }}
+                />
+              ))}
+            </div>
+          </section>
 
-          <VehicleStatusList vehicles={vehicles} />
+          {/* Section B — vehicle documents per car. */}
+          <section>
+            <h2 className="t-h3 text-text mt-4 mb-2">Vehicle documents</h2>
+            <p className="text-xs text-text-muted mb-3">
+              Each car has its own set. Approving vehicle registration + insurance + car photo for a car verifies THAT car for posting.
+            </p>
+            {vehicles.length === 0 ? (
+              <Card><CardDescription>Add a vehicle first to upload its documents.</CardDescription></Card>
+            ) : (
+              vehicles.map((v) => (
+                <div key={v.id} className="mb-4">
+                  <div className="flex items-center justify-between gap-3 px-1 py-1">
+                    <div className="text-sm font-semibold text-text truncate">
+                      {v.make} {v.model} · <span className="tabular-nums">{v.plate_number}</span>
+                    </div>
+                    <span
+                      className={[
+                        'inline-flex items-center h-6 px-2.5 rounded-pill text-[10px] font-bold uppercase tracking-wider',
+                        v.is_verified ? 'bg-brand/15 text-brand' : 'bg-warning/15 text-warning',
+                      ].join(' ')}
+                    >
+                      {v.is_verified ? 'Approved' : 'Pending'}
+                    </span>
+                  </div>
+                  <div className="grid gap-3">
+                    {REQUIRED_DOCS.filter((r) => isVehicleDocType(r.type)).map(({ type, label, rwLabel, description }) => (
+                      <DocRow
+                        key={`${v.id}-${type}`}
+                        type={type}
+                        label={label}
+                        rwLabel={rwLabel}
+                        description={description}
+                        doc={latestForVehicle(data?.docs ?? [], type, v.id)}
+                        vehicles={[v]}
+                        forceVehicleId={v.id}
+                        onUploaded={async () => { await refetch(); await refreshProfile(); }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </section>
 
           <SubmitForReviewStrip latest={latest} onSubmitted={async () => { await refetch(); await refreshProfile(); }} />
 
@@ -190,46 +241,18 @@ function Banner({
   );
 }
 
-/* ---------------- Per-vehicle status list ---------------- */
-function VehicleStatusList({ vehicles }: { vehicles: Vehicle[] }) {
-  if (vehicles.length === 0) return null;
-  return (
-    <Card>
-      <CardTitle>Your cars</CardTitle>
-      <CardDescription>Each car is verified separately. Vehicle docs above unlock the car you selected.</CardDescription>
-      <div className="mt-4 grid gap-2">
-        {vehicles.map((v) => (
-          <div key={v.id} className="flex items-center justify-between gap-3 rounded-field border border-border bg-surface px-3 py-2">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-text truncate">
-                {v.make} {v.model}{v.year ? ` · ${v.year}` : ''}
-              </div>
-              <div className="text-xs text-text-muted truncate">{v.plate_number}{v.color ? ` · ${v.color}` : ''}</div>
-            </div>
-            <span
-              className={[
-                'inline-flex items-center h-6 px-2.5 rounded-pill text-[10px] font-bold uppercase tracking-wider',
-                v.is_verified ? 'bg-brand/15 text-brand' : 'bg-warning/15 text-warning',
-              ].join(' ')}
-            >
-              {v.is_verified ? 'Approved' : 'Pending'}
-            </span>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
 /* ---------------- Doc row + upload control ---------------- */
 function DocRow({
-  type, label, description, doc, vehicles, onUploaded,
+  type, label, rwLabel, description, doc, vehicles, forceVehicleId, onUploaded,
 }: {
   type: DocType;
   label: string;
+  rwLabel?: string;
   description: string;
   doc: DriverDocument | null;
   vehicles: Vehicle[];
+  /** Locks the vehicle the doc is for (used when we render per-car sections). */
+  forceVehicleId?: string;
   onUploaded: () => void | Promise<void>;
 }) {
   const { user } = useAuth();
@@ -237,18 +260,22 @@ function DocRow({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(false);
-  // For vehicle docs the driver must pick which car this doc is for. If they
-  // only have one, we default to it silently.
   const singleVehicle = vehicles.length === 1 ? vehicles[0]?.id ?? '' : '';
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(doc?.vehicle_id ?? singleVehicle);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(
+    forceVehicleId ?? doc?.vehicle_id ?? singleVehicle,
+  );
   const isVehicleDoc = isVehicleDocType(type);
+  const needsExpiry  = isExpiringDocType(type);
+  const [issueDate,  setIssueDate]  = useState<string>(doc?.issue_date  ?? '');
+  const [expiryDate, setExpiryDate] = useState<string>(doc?.expiry_date ?? '');
+  const [docNumber,  setDocNumber]  = useState<string>(doc?.doc_number  ?? '');
 
   const status: DocStatus | 'none' = doc?.status ?? 'none';
+  const expired = isExpired(doc?.expiry_date ?? null);
+  const daysLeft = daysUntilExpiry(doc?.expiry_date ?? null);
 
   async function submit(file: File) {
     if (!user) return;
-    // Vehicle-doc integrity check — server also enforces, but bail early with
-    // a friendly message rather than the storage upload happening for nothing.
     if (isVehicleDoc) {
       if (vehicles.length === 0) {
         toast.push({ kind: 'error', message: 'Add a vehicle first, then upload its documents.' });
@@ -259,10 +286,19 @@ function DocRow({
         return;
       }
     }
+    if (needsExpiry && !expiryDate) {
+      toast.push({ kind: 'error', message: `${label} requires an expiry date. Enter it above before uploading.` });
+      return;
+    }
     try {
       setBusy(true);
-      await uploadDocument(user.id, type, file, isVehicleDoc ? selectedVehicleId : null);
-      toast.push({ kind: 'success', title: 'Uploaded', message: `${label} saved. Click "Send for verification" when you're done uploading.` });
+      await uploadDocument(user.id, type, file, {
+        vehicleId: isVehicleDoc ? selectedVehicleId : null,
+        issueDate:  needsExpiry ? (issueDate || null) : null,
+        expiryDate: needsExpiry ? (expiryDate || null) : null,
+        docNumber:  needsExpiry ? (docNumber || null) : null,
+      });
+      toast.push({ kind: 'success', title: 'Uploaded', message: `${label} saved. Click "Send for verification" when you’re done uploading.` });
       await onUploaded();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Upload failed.';
@@ -277,11 +313,26 @@ function DocRow({
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="text-sm font-semibold text-text">{label}</div>
+            <div className="text-sm font-semibold text-text">
+              {label}
+              {rwLabel && <span className="ml-2 text-xs font-normal text-text-muted">({rwLabel})</span>}
+            </div>
             <StatusPill status={status} />
+            {expired && (
+              <span className="inline-flex items-center h-5 px-2 rounded-pill text-[10px] font-bold uppercase tracking-wider bg-danger/15 text-danger">
+                Expired
+              </span>
+            )}
+            {!expired && daysLeft != null && daysLeft <= 7 && daysLeft > 0 && (
+              <span className="inline-flex items-center h-5 px-2 rounded-pill text-[10px] font-bold uppercase tracking-wider bg-warning/15 text-warning">
+                Expires in {daysLeft}d
+              </span>
+            )}
           </div>
           <p className="mt-1 text-xs text-text-muted">{description}</p>
-          {isVehicleDoc && (
+
+          {/* Vehicle picker — only when the parent didn't lock a vehicle. */}
+          {isVehicleDoc && !forceVehicleId && (
             <div className="mt-3 max-w-sm">
               <Select
                 label="For which vehicle?"
@@ -297,11 +348,46 @@ function DocRow({
               />
             </div>
           )}
+
+          {/* Expiry-carrying docs collect issue/expiry + optional doc number. */}
+          {needsExpiry && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-3 max-w-md">
+              <label className="text-xs font-medium text-text flex flex-col gap-1">
+                Issue date
+                <input
+                  type="date"
+                  value={issueDate}
+                  onChange={(e) => setIssueDate(e.target.value)}
+                  className="h-10 px-3 rounded-field bg-surface border border-border text-sm text-text outline-none focus:border-brand focus:shadow-ring"
+                />
+              </label>
+              <label className="text-xs font-medium text-text flex flex-col gap-1">
+                Expiry date <span className="text-danger">*</span>
+                <input
+                  type="date"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                  className="h-10 px-3 rounded-field bg-surface border border-border text-sm text-text outline-none focus:border-brand focus:shadow-ring"
+                />
+              </label>
+              <label className="text-xs font-medium text-text flex flex-col gap-1">
+                Reference #
+                <input
+                  type="text"
+                  value={docNumber}
+                  onChange={(e) => setDocNumber(e.target.value)}
+                  placeholder="Optional"
+                  className="h-10 px-3 rounded-field bg-surface border border-border text-sm text-text outline-none focus:border-brand focus:shadow-ring"
+                />
+              </label>
+            </div>
+          )}
+
           {doc && (
             <p className="mt-2 text-xs text-text-muted break-all">
               File: <span className="tabular-nums text-text">{doc.file_url.split('/').pop()}</span>
               {doc.vehicle_id && vehicles.find((v) => v.id === doc.vehicle_id) && (
-                <> · linked to {vehicles.find((v) => v.id === doc.vehicle_id)?.make} {vehicles.find((v) => v.id === doc.vehicle_id)?.model}</>
+                <> {'·'} linked to {vehicles.find((v) => v.id === doc.vehicle_id)?.make} {vehicles.find((v) => v.id === doc.vehicle_id)?.model}</>
               )}
             </p>
           )}

@@ -71,6 +71,26 @@ export function validateSeats(seats: number, vehicleCapacity: number | null | un
   return ok;
 }
 
+/* ── Vehicle plate ────────────────────────────────────────────────────── */
+
+/** Rwandan civilian plates are three letters + three digits + one letter,
+ * with optional single spaces between the parts (e.g. RAB 123 A, rab123a).
+ * We normalise to uppercase with no internal doubled whitespace. */
+export function normalisePlate(raw: string): string {
+  return raw.replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+const PLATE_RE = /^[A-Z]{3} ?[0-9]{3} ?[A-Z]$/;
+
+export function validatePlate(raw: string): ValidationResult {
+  const p = normalisePlate(raw);
+  if (!p) return err('plate_required', 'Plate number is required.');
+  if (!PLATE_RE.test(p)) {
+    return err('plate_format', 'Use the Rwandan plate format, e.g. RAB 123 A.');
+  }
+  return ok;
+}
+
 /* ── Aggregate helpers ────────────────────────────────────────────────── */
 
 /** Roll a set of results into the first failure, or ok. */

@@ -8,12 +8,16 @@ import { useAuth } from '@/auth/useAuth';
 import { useDataFetch } from '@/lib/useDataFetch';
 import { listMyTrips, type MyTrip } from '@/features/bookings/api';
 import { listMyJourneys, type MyJourney } from '@/features/journeys/api';
+import { listMyVehicles, type Vehicle } from '@/features/vehicles/api';
+import { daysUntilExpiry, listMyDocuments, type DriverDocument } from '@/features/verification/api';
 import { BoardingCodeDisplay } from '@/components/BoardingCodeDisplay';
 import { formatDateTime, formatRWF, pluralSeats } from '@/lib/format';
 
 type Bundle = {
   trips: MyTrip[];
   journeys: MyJourney[];
+  vehicles: Vehicle[];
+  docs: DriverDocument[];
 };
 
 export default function OverviewPage() {
@@ -24,12 +28,14 @@ export default function OverviewPage() {
   const showDriver    = role === 'driver'    || role === 'both';
 
   const fetcher = useCallback(async (): Promise<Bundle> => {
-    if (!user) return { trips: [], journeys: [] };
-    const [trips, journeys] = await Promise.all([
-      showPassenger ? listMyTrips(user.id) : Promise.resolve([]),
-      showDriver    ? listMyJourneys(user.id) : Promise.resolve([]),
+    if (!user) return { trips: [], journeys: [], vehicles: [], docs: [] };
+    const [trips, journeys, vehicles, docs] = await Promise.all([
+      showPassenger ? listMyTrips(user.id) : Promise.resolve([] as MyTrip[]),
+      showDriver    ? listMyJourneys(user.id) : Promise.resolve([] as MyJourney[]),
+      showDriver    ? listMyVehicles(user.id).catch(() => [] as Vehicle[]) : Promise.resolve([] as Vehicle[]),
+      showDriver    ? listMyDocuments(user.id).catch(() => [] as DriverDocument[]) : Promise.resolve([] as DriverDocument[]),
     ]);
-    return { trips, journeys };
+    return { trips, journeys, vehicles, docs };
   }, [user, showPassenger, showDriver]);
 
   const onError = useCallback(
@@ -45,6 +51,19 @@ export default function OverviewPage() {
 
   const trips    = data?.trips ?? [];
   const journeys = data?.journeys ?? [];
+  const vehicles = data?.vehicles ?? [];
+  const docs     = data?.docs ?? [];
+
+  // Expiring / expired documents — one banner entry per doc so the driver
+  // sees each car+doc pair separately. Show only insurance/inspection since
+  // those are the ones with hard consequences (expired insurance unverifies
+  // the car). Order: expired first, then soonest expiry.
+  const expiringDocs = docs
+    .filter((d) => d.status === 'approved' && d.expiry_date)
+    .filter((d) => d.doc_type === 'insurance_certificate' || d.doc_type === 'inspection_certificate')
+    .map((d) => ({ doc: d, daysLeft: daysUntilExpiry(d.expiry_date)! }))
+    .filter(({ daysLeft }) => daysLeft <= 7)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
 
   const upcomingTrips = trips.filter((t) => ['requested','accepted','boarding','in_trip'].includes(t.status));
   const nextTrip = upcomingTrips
@@ -89,6 +108,48 @@ export default function OverviewPage() {
             <Link to="/dashboard/verification"><Button>Verify now</Button></Link>
           </div>
         </Card>
+      )}
+
+      {/* Expiring / expired vehicle docs — highest-urgency banner on the
+          driver dashboard. Fires at 7 days out and stays until renewed. An
+          expired insurance forces the car back to unverified via the server
+          recompute — the driver can't post trips on that car until they
+          re-upload + get admin approval. */}
+      {showDriver && expiringDocs.length > 0 && (
+        <div className="grid gap-2">
+          {expiringDocs.map(({ doc: d, daysLeft }) => {
+            const v = vehicles.find((x) => x.id === d.vehicle_id);
+            const vLabel = v ? `${v.make} ${v.model} (${v.plate_number})` : 'your car';
+            const typeLabel = d.doc_type === 'insurance_certificate' ? 'Insurance'
+              : d.doc_type === 'inspection_certificate' ? 'Vehicle inspection'
+              : d.doc_type;
+            const isExpiredNow = daysLeft < 0;
+            return (
+              <Card
+                key={d.id}
+                className={isExpiredNow ? '!bg-danger/10 !border-danger/30' : '!bg-warning/10 !border-warning/30'}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                  <div className="min-w-0">
+                    <div className="t-caption">{isExpiredNow ? 'Expired' : 'Expiring soon'}</div>
+                    <CardTitle>
+                      {typeLabel} for {vLabel} {isExpiredNow ? 'expired' : 'expires'}{' '}
+                      {isExpiredNow
+                        ? `on ${new Date(d.expiry_date!).toLocaleDateString()}`
+                        : `in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
+                    </CardTitle>
+                    <CardDescription>
+                      {isExpiredNow
+                        ? 'Your car is now unverified for posting. Renew and re-upload to keep driving.'
+                        : 'Renew and re-upload before it lapses to avoid losing your posting privileges.'}
+                    </CardDescription>
+                  </div>
+                  <Link to="/dashboard/verification"><Button size="sm">Open verification</Button></Link>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       )}
 
       {/* Recurrence reminders — for pilot V1 the recurrence field is a
