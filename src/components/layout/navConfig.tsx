@@ -80,6 +80,7 @@ function driverGroupsFor(ctx: NavContext): NavGroup[] {
   ];
   if (ctx.isVerifiedDriver) {
     accountItems.push({ to: '/dashboard/earnings', label: 'Earnings', icon: <CashIcon /> });
+    accountItems.push({ to: '/dashboard/receipts', label: 'Receipts', icon: <ReceiptIcon /> });
   }
   accountItems.push({ to: '/dashboard/profile', label: 'Profile', icon: <UserIcon />, bottomNav: true });
 

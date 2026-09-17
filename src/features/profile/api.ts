@@ -3,22 +3,26 @@ import type { RoleIntent } from '@/lib/database.types';
 import { normalizeRwandaPhone } from '@/lib/validators';
 
 export type UpdateProfileInput = {
-  full_name: string;
-  phone: string | null;    // caller passes normalised value or null
-  role_intent: RoleIntent;
+  full_name?: string;
+  phone?: string | null;    // caller passes normalised value or null
+  /** Role changes are no longer accepted via the profile settings — this
+   * field is intentionally OPTIONAL and only forwarded when the caller
+   * explicitly opts in (admin flows). Passenger→driver upgrades must go
+   * through the verification flow, not a profile toggle. */
+  role_intent?: RoleIntent;
   avatar_url?: string | null;
 };
 
 /** Owner-only per RLS: profiles_update_self. */
 export async function updateProfile(userId: string, input: UpdateProfileInput) {
+  const patch: Record<string, unknown> = {};
+  if (input.full_name !== undefined)   patch.full_name   = input.full_name.trim();
+  if (input.phone !== undefined)       patch.phone       = input.phone;
+  if (input.role_intent !== undefined) patch.role_intent = input.role_intent;
+  if (input.avatar_url !== undefined)  patch.avatar_url  = input.avatar_url;
   const { data, error } = await supabase
     .from('profiles')
-    .update({
-      full_name: input.full_name.trim(),
-      phone: input.phone,
-      role_intent: input.role_intent,
-      ...(input.avatar_url !== undefined ? { avatar_url: input.avatar_url } : {}),
-    })
+    .update(patch)
     .eq('id', userId)
     .select('*')
     .single();

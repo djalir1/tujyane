@@ -71,6 +71,13 @@ export default function OverviewPage() {
     .sort((a, b) => (a.journey!.departure_time.localeCompare(b.journey!.departure_time)))
     .find(Boolean) ?? null;
 
+  // "You're confirmed" hero banner — every accepted trip that hasn't started
+  // yet gets its own prominent card at the top with the boarding code + who
+  // to look for, so the passenger never has to hunt for what happens next.
+  const acceptedTrips = trips
+    .filter((t) => t.status === 'accepted' && t.boarding_code)
+    .sort((a, b) => (a.journey?.departure_time ?? '').localeCompare(b.journey?.departure_time ?? ''));
+
   const activeJourneys = journeys.filter((j) => j.status === 'active' || j.status === 'full');
   const pendingRequestCount = journeys.reduce((sum, j) => sum + j.bookings_count.requested, 0);
   const acceptedCount       = journeys.reduce((sum, j) => sum + j.bookings_count.accepted, 0);
@@ -96,6 +103,13 @@ export default function OverviewPage() {
           Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}.
         </p>
       </header>
+
+      {/* "You're confirmed" hero banners — one per accepted trip. Shows the
+          boarding code prominently plus driver, vehicle, plate, and time so
+          the passenger sees exactly what happens next without hunting. */}
+      {showPassenger && acceptedTrips.map((t) => (
+        <AcceptedTripHero key={t.id} trip={t} />
+      ))}
 
       {/* Verification nudge only when driver but not verified. */}
       {showDriver && profile && !profile.is_verified_driver && (
@@ -239,6 +253,65 @@ export default function OverviewPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+/* ---------- Accepted trip hero (the big "you're confirmed" card) ---------- */
+function AcceptedTripHero({ trip }: { trip: MyTrip }) {
+  const j = trip.journey;
+  if (!j || !trip.boarding_code) return null;
+  const dt = formatDateTime(j.departure_time);
+  return (
+    <Card className="!bg-brand/10 !border-brand/40">
+      <div className="grid gap-4 md:grid-cols-[1fr_auto] items-start">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 rounded-pill bg-brand text-brand-fg px-3 h-7 text-[10px] font-bold uppercase tracking-wider">
+            {'✓'} You’re confirmed
+          </div>
+          <CardTitle className="mt-3">Show this code to your driver</CardTitle>
+          <div className="mt-2 grid gap-1.5 text-sm text-text">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-text-muted shrink-0">Trip:</span>
+              <span className="font-semibold truncate">{j.origin_text} → {j.destination_text}</span>
+            </div>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-text-muted shrink-0">When:</span>
+              <span className="font-semibold truncate">{dt.full}</span>
+            </div>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-text-muted shrink-0">Driver:</span>
+              <span className="font-semibold truncate">
+                {j.driver?.full_name ?? 'Driver'}
+                {j.driver?.is_verified_driver && <span className="ml-1 text-xs text-brand">· verified</span>}
+              </span>
+            </div>
+            {j.vehicle && (
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-text-muted shrink-0">Vehicle:</span>
+                <span className="font-semibold truncate">
+                  {j.vehicle.make} {j.vehicle.model}
+                  {j.vehicle.plate_number ? ` · ${j.vehicle.plate_number}` : ''}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-text-muted shrink-0">Seats:</span>
+              <span className="font-semibold truncate">
+                {pluralSeats(trip.seats_booked)} · {formatRWF(trip.contribution_amount ?? 0)}
+              </span>
+            </div>
+          </div>
+          <div className="mt-4">
+            <Link to="/dashboard/trips">
+              <Button size="sm" variant="outline">Trip details</Button>
+            </Link>
+          </div>
+        </div>
+        <div className="min-w-0 md:min-w-[280px]">
+          <BoardingCodeDisplay code={trip.boarding_code} label="Boarding code" />
+        </div>
+      </div>
+    </Card>
   );
 }
 

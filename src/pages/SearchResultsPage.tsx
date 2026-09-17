@@ -154,15 +154,27 @@ export default function SearchResultsPage() {
             <DatePicker label="Date" value={date} onChange={setDate} disablePast />
             <TextField label="Passengers" type="number" inputMode="numeric" min={1} max={7}
               value={pax} onChange={(e) => setPax(e.target.value)} className="sm:w-24" />
-            <Button type="submit" size="md" className="sm:h-12">Update</Button>
+            <Button type="submit" size="md" className="sm:h-12" loading={loading}>Search</Button>
           </form>
         </Card>
 
         {/* View toggle + counter */}
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm text-text-muted min-w-0 truncate">
-            {loading ? 'Loading…' : `${rows.length} ride${rows.length === 1 ? '' : 's'}`}
-            {from && to && !loading && <> · {from.name} → {to.name}</>}
+          <div className="text-sm min-w-0 truncate flex items-center gap-2" aria-live="polite">
+            {loading ? (
+              <>
+                <span className="inline-block h-2 w-2 rounded-full bg-brand animate-pulseDot" aria-hidden />
+                <span className="text-text-muted">Searching…</span>
+              </>
+            ) : (
+              <>
+                <span className="font-semibold text-text tabular-nums">{rows.length}</span>
+                <span className="text-text-muted">
+                  ride{rows.length === 1 ? '' : 's'} found
+                  {from && to && <> · {from.name} → {to.name}</>}
+                </span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-1 rounded-pill border border-border bg-bg-elevated p-1 shrink-0">
             <ViewChip active={view === 'list'} onClick={() => setView('list')} icon={<ListIcon />} label="List" />

@@ -42,10 +42,13 @@
 :root[data-theme='light'] {
   --bg:           245 247 250;
   --bg-elevated:  255 255 255;
-  --surface:      255 255 255;
-  --surface-hover:245 247 251;
-  --border:       225 230 238;
-  --border-strong:196 204 216;
+  /* Inputs sit inside white cards on a nearly-white page. Give them a
+   * subtle blue-gray tint so they stay visible against the card + darker
+   * borders for definition. Fixes the "invisible email field" bug. */
+  --surface:      241 246 251;
+  --surface-hover:230 238 247;
+  --border:       191 202 219;
+  --border-strong:150 165 189;
 
   --text:          14  22  35;
   --text-muted:    83  94 111;

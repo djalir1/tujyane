@@ -183,12 +183,16 @@ function TripCard({
               <BookingStatusBadge status={trip.status} size="sm" />
             </div>
             {j && (
-              <div className="mt-2 text-sm font-semibold text-text truncate">
-                {j.origin_text} → {j.destination_text}
+              <div className="mt-2 text-sm font-semibold text-text min-w-0 break-words">
+                <div className="truncate">{j.origin_text}</div>
+                <div className="truncate flex items-center gap-1">
+                  <span className="text-text-subtle shrink-0">{'→'}</span>
+                  <span className="truncate">{j.destination_text}</span>
+                </div>
               </div>
             )}
             {j && (
-              <div className="mt-1 text-xs text-text-muted">
+              <div className="mt-1 text-xs text-text-muted truncate">
                 {pluralSeats(trip.seats_booked)} · {formatRWF(trip.contribution_amount ?? 0)}
               </div>
             )}

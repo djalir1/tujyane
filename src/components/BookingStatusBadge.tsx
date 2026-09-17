@@ -37,16 +37,16 @@ export function BookingStatusBadge({ status, size = 'md' }: { status: BookingSta
 type Entry = { label: string; bg: string; text: string; border: string; dot: string };
 const MAP: Record<BookingStatus, Entry> = {
   requested: {
-    label: 'Requested', bg: 'bg-warning/15', text: 'text-warning', border: 'border border-warning/30', dot: 'bg-warning',
+    label: 'Waiting for driver', bg: 'bg-warning/15', text: 'text-warning', border: 'border border-warning/30', dot: 'bg-warning',
   },
   accepted: {
-    label: 'Accepted', bg: 'bg-blue-500/15', text: 'text-blue-500', border: 'border border-blue-500/30', dot: 'bg-blue-500',
+    label: 'Confirmed', bg: 'bg-brand/15', text: 'text-brand', border: 'border border-brand/40', dot: 'bg-brand',
   },
   boarding: {
-    label: 'Aboard', bg: 'bg-brand/15', text: 'text-brand', border: 'border border-brand/30', dot: 'bg-brand',
+    label: 'Boarding', bg: 'bg-brand/15', text: 'text-brand', border: 'border border-brand/30', dot: 'bg-brand',
   },
   in_trip: {
-    label: 'In trip', bg: 'bg-brand/15', text: 'text-brand', border: 'border border-brand/30', dot: 'bg-brand',
+    label: 'On the way', bg: 'bg-brand/15', text: 'text-brand', border: 'border border-brand/30', dot: 'bg-brand',
   },
   completed: {
     label: 'Completed', bg: 'bg-surface-hover', text: 'text-text-muted', border: 'border border-border', dot: 'bg-text-muted',

@@ -70,6 +70,16 @@ export default function DriverVerificationPage() {
         </div>
       ) : (
         <>
+          {/* Ordered status path so the driver understands what's blocking:
+              1. Personal identity → 2. Car(s) → 3. Post trips.
+              Steps light up in order and reflect real DB state. */}
+          <VerificationStatusPath
+            isVerifiedDriver={Boolean(profile?.is_verified_driver)}
+            hasAnyVehicle={vehicles.length > 0}
+            anyVehicleVerified={anyVehicleVerified}
+            hasPendingPersonalDocs={REQUIRED_DOCS.filter((r) => !isVehicleDocType(r.type)).some((r) => latest[r.type]?.status === 'pending')}
+          />
+
           <Banner
             isVerifiedDriver={Boolean(profile?.is_verified_driver)}
             anyVehicleVerified={anyVehicleVerified}
@@ -155,6 +165,62 @@ export default function DriverVerificationPage() {
       )}
     </div>
   );
+}
+
+/* ---------------- Status path (ordered stepper) ---------------- */
+function VerificationStatusPath({
+  isVerifiedDriver, hasAnyVehicle, anyVehicleVerified, hasPendingPersonalDocs,
+}: {
+  isVerifiedDriver: boolean;
+  hasAnyVehicle: boolean;
+  anyVehicleVerified: boolean;
+  hasPendingPersonalDocs: boolean;
+}) {
+  type StepStatus = 'done' | 'active' | 'blocked' | 'pending';
+  const step1Status: StepStatus = isVerifiedDriver
+    ? 'done'
+    : hasPendingPersonalDocs ? 'active' : 'pending';
+  const step2Status: StepStatus = anyVehicleVerified
+    ? 'done'
+    : !isVerifiedDriver ? 'blocked'
+    : hasAnyVehicle ? 'active' : 'pending';
+  const step3Status: StepStatus = anyVehicleVerified ? 'done' : 'blocked';
+
+  const steps: { n: number; label: string; hint: string; status: StepStatus }[] = [
+    { n: 1, label: 'Your identity', hint: isVerifiedDriver ? 'Approved' : hasPendingPersonalDocs ? 'Under review' : 'Upload National ID + Driving license', status: step1Status },
+    { n: 2, label: 'Your car',      hint: !isVerifiedDriver ? 'Waiting on identity approval' : anyVehicleVerified ? 'At least one car approved' : hasAnyVehicle ? 'Awaiting car documents' : 'Add a car', status: step2Status },
+    { n: 3, label: 'Post trips',    hint: anyVehicleVerified ? 'You can post journeys' : 'Unlocks once a car is approved', status: step3Status },
+  ];
+
+  return (
+    <Card>
+      <div className="flex items-center flex-wrap gap-3 sm:gap-2">
+        {steps.map((s, i) => (
+          <div key={s.n} className="flex items-center gap-3 min-w-0 flex-1">
+            <StepBadge n={s.n} status={s.status} />
+            <div className="min-w-0">
+              <div className={[
+                'text-sm font-semibold truncate',
+                s.status === 'blocked' ? 'text-text-subtle' : 'text-text',
+              ].join(' ')}>{s.label}</div>
+              <div className="text-[11px] text-text-muted truncate">{s.hint}</div>
+            </div>
+            {i < steps.length - 1 && (
+              <div className="hidden sm:block flex-1 h-px bg-border mx-1" aria-hidden />
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function StepBadge({ n, status }: { n: number; status: 'done' | 'active' | 'blocked' | 'pending' }) {
+  const base = 'h-9 w-9 shrink-0 rounded-full grid place-items-center text-sm font-bold border';
+  if (status === 'done')    return <span className={`${base} bg-brand text-brand-fg border-brand`} aria-label="Done">{'✓'}</span>;
+  if (status === 'active')  return <span className={`${base} bg-warning/15 text-warning border-warning/40`}>{n}</span>;
+  if (status === 'blocked') return <span className={`${base} bg-surface-hover text-text-subtle border-border`}>{n}</span>;
+  return <span className={`${base} bg-bg-elevated text-text-muted border-border`}>{n}</span>;
 }
 
 /* ---------------- Banner (honest about the two verifications) ---------------- */

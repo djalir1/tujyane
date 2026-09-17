@@ -224,6 +224,43 @@ export async function listMyTrips(passengerId: string): Promise<MyTrip[]> {
   return (data ?? []) as unknown as MyTrip[];
 }
 
+/** Booking + full passenger + journey. Driver-facing receipts list. */
+export type MyDriverReceipt = BookingRow & {
+  passenger: { id: string; full_name: string; avatar_url: string | null } | null;
+  journey:   MyTripJourney | null;
+};
+
+/**
+ * Every completed booking on a journey the driver posted, most-recent first.
+ * Powers the driver-side Receipts view so drivers can download the same
+ * TUJYANE-branded PDF as passengers.
+ */
+export async function listMyDriverReceipts(driverId: string): Promise<MyDriverReceipt[]> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(`
+      *,
+      passenger:profiles!bookings_passenger_id_fkey (
+        id, full_name, avatar_url
+      ),
+      journey:journeys!bookings_journey_id_fkey!inner (
+        id, driver_id, origin_text, destination_text, departure_time, status,
+        suggested_contribution, contribution_per_seat,
+        driver:profiles!journeys_driver_id_fkey (
+          id, full_name, avatar_url, rating_avg, rating_count, is_verified_driver
+        ),
+        vehicle:vehicles!journeys_vehicle_id_fkey (
+          id, make, model, year, color, plate_number, energy_type, is_verified
+        )
+      )
+    `)
+    .eq('journey.driver_id', driverId)
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as MyDriverReceipt[];
+}
+
 /* -------------------- helpers -------------------- */
 
 function mapRpcError(err: { message?: string }): Error {

@@ -139,10 +139,14 @@ function MyJourneyRow({ j, onCancelled }: { j: MyJourney; onCancelled: () => voi
             <span>{dt.full}</span>
             <StatusBadge status={j.status} />
           </div>
-          <div className="mt-2 text-sm font-semibold text-text truncate">
-            {j.origin_text} → {j.destination_text}
+          <div className="mt-2 text-sm font-semibold text-text min-w-0">
+            <div className="truncate">{j.origin_text}</div>
+            <div className="truncate flex items-center gap-1">
+              <span className="text-text-subtle shrink-0">{'→'}</span>
+              <span className="truncate">{j.destination_text}</span>
+            </div>
           </div>
-          <div className="mt-1 text-xs text-text-muted">
+          <div className="mt-1 text-xs text-text-muted truncate">
             {j.vehicle ? `${j.vehicle.make} ${j.vehicle.model}${j.vehicle.energy_type === 'electric' ? ' ⚡' : ''}` : 'No vehicle'}
             {' · '}
             {pluralSeats(j.seats_available)} left of {j.seats_total}

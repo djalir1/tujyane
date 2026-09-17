@@ -77,14 +77,14 @@ export function JourneyCard({ j }: { j: JourneyWithJoins }) {
           </div>
         </div>
 
-        <div className="sm:w-44 flex sm:flex-col justify-between sm:items-end gap-3">
-          <div>
-            <div className="text-lg font-bold text-text tabular-nums">{formatRWF(contributionOf(j))}</div>
-            <div className="text-xs text-text-muted">
+        <div className="w-full sm:w-44 flex items-center sm:flex-col justify-between sm:items-end gap-3 shrink-0">
+          <div className="min-w-0">
+            <div className="text-lg font-bold text-text tabular-nums truncate">{formatRWF(contributionOf(j))}</div>
+            <div className="text-xs text-text-muted truncate">
               {pluralSeats(j.seats_available)} left
             </div>
           </div>
-          <Link to={`/journeys/${j.id}`} className="w-auto sm:w-full">
+          <Link to={`/journeys/${j.id}`} className="shrink-0 sm:w-full">
             <Button size="sm" fullWidth>View</Button>
           </Link>
         </div>

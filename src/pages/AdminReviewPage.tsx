@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Card, CardDescription, CardTitle } from '@/components/ds/Card';
 import { Button } from '@/components/ds/Button';
@@ -54,18 +54,31 @@ export default function AdminReviewPage() {
       ) : (
         <>
           <Card>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <Avatar name={driver.full_name} url={driver.avatar_url} size={44} />
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-text truncate">
-                  {driver.full_name}
-                  {driver.is_verified_driver && <span className="ml-1 text-xs text-brand">· verified</span>}
-                </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-text truncate">{driver.full_name}</div>
                 <div className="text-xs text-text-muted">
                   {driver.phone ?? 'No phone'} · ★ {driver.rating_count ? driver.rating_avg.toFixed(1) : '—'}
                 </div>
               </div>
+              <div className="shrink-0 text-right">
+                <div className="t-caption">Driver identity</div>
+                <span
+                  className={[
+                    'inline-flex items-center h-6 px-2.5 rounded-pill text-[10px] font-bold uppercase tracking-wider',
+                    driver.is_verified_driver ? 'bg-brand/15 text-brand' : 'bg-warning/15 text-warning',
+                  ].join(' ')}
+                >
+                  {driver.is_verified_driver ? 'Verified' : 'Pending review'}
+                </span>
+              </div>
             </div>
+            {!driver.is_verified_driver && (
+              <p className="mt-3 text-xs text-text-muted">
+                Approve the driver's National ID and Driving license below before any car can be verified. The car sections are visible so you can preview the docs, but the "Verify vehicle" button is locked until the person is approved.
+              </p>
+            )}
           </Card>
 
           <section>
@@ -148,21 +161,28 @@ export default function AdminReviewPage() {
                       {v.is_verified ? (
                         <span className="inline-flex items-center h-6 px-2 rounded-pill text-[10px] font-bold uppercase tracking-wider bg-brand/15 text-brand">Verified</span>
                       ) : (
-                        <Button
-                          size="sm"
-                          onClick={async () => {
-                            try {
-                              await approveVehicle(v.id);
-                              toast.push({ kind: 'success', message: 'Vehicle verified.' });
-                              await refetch();
-                            } catch (err) {
-                              const msg = err instanceof Error ? err.message : 'Could not verify.';
-                              toast.push({ kind: 'error', message: msg });
-                            }
-                          }}
-                        >
-                          Verify vehicle
-                        </Button>
+                        <div className="flex flex-col items-end gap-1">
+                          <Button
+                            size="sm"
+                            disabled={!driver.is_verified_driver}
+                            title={!driver.is_verified_driver ? 'Approve the driver’s personal documents first' : undefined}
+                            onClick={async () => {
+                              try {
+                                await approveVehicle(v.id);
+                                toast.push({ kind: 'success', message: 'Vehicle verified.' });
+                                await refetch();
+                              } catch (err) {
+                                const msg = err instanceof Error ? err.message : 'Could not verify.';
+                                toast.push({ kind: 'error', message: msg });
+                              }
+                            }}
+                          >
+                            Verify vehicle
+                          </Button>
+                          {!driver.is_verified_driver && (
+                            <span className="text-[10px] text-text-muted">Driver identity approval required first</span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </Card>
@@ -224,6 +244,7 @@ function DocReviewCard({
   const [signed, setSigned] = useState<string | null>(null);
   const [signError, setSignError] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | 'approve'>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -283,20 +304,32 @@ function DocReviewCard({
             ) : !signed ? (
               <Skeleton widthClass="w-3/5" heightClass="h-6" />
             ) : isPdf ? (
-              <a href={signed} target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand">
+              <a href={signed} target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand underline">
                 Open PDF ↗
               </a>
             ) : (
-              <a href={signed} target="_blank" rel="noreferrer" className="block h-full w-full">
+              <button
+                type="button"
+                onClick={() => setLightbox(signed)}
+                className="block h-full w-full group relative"
+                aria-label={`Preview ${label}`}
+              >
                 <img
                   src={signed}
                   alt={label}
                   className="h-full w-full object-contain bg-white"
                   onError={() => setSignError('Object not found in bucket.')}
                 />
-              </a>
+                <span className="absolute right-2 bottom-2 h-7 px-2 rounded-pill bg-black/60 text-white text-[10px] font-bold uppercase tracking-wider grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  Click to enlarge
+                </span>
+              </button>
             )}
           </div>
+
+          {lightbox && (
+            <ImageLightbox url={lightbox} label={label} onClose={() => setLightbox(null)} />
+          )}
 
           {/* Data the driver entered — visible BEFORE the admin approves. */}
           {doc && (doc.issue_date || doc.expiry_date || doc.doc_number) && (
@@ -400,6 +433,55 @@ function RejectDialog({
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button variant="danger" loading={busy} disabled={disabled} onClick={submit}>Reject</Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Full-screen preview modal. Uses the same signed URL the inline preview
+ * already fetched — no extra network round-trip. Escape / click-outside / X
+ * closes.
+ */
+function ImageLightbox({ url, label, onClose }: { url: string; label: string; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prevOverflow; };
+  }, [onClose]);
+  return (
+    <div
+      className="fixed inset-0 z-[100] grid place-items-center p-4 sm:p-8"
+      role="dialog" aria-modal="true" aria-label={`Preview: ${label}`}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="absolute inset-0 bg-black/80" aria-hidden />
+      <div ref={dialogRef} className="relative max-w-5xl max-h-full w-full">
+        <div className="flex items-center justify-between mb-3 text-white">
+          <div className="text-sm font-semibold truncate pr-3">{label}</div>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-semibold text-white/80 hover:text-white underline"
+            >
+              Open in new tab
+            </a>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close preview"
+              className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-white grid place-items-center"
+            >
+              {'✕'}
+            </button>
+          </div>
+        </div>
+        <img src={url} alt={label} className="w-full max-h-[80vh] object-contain rounded-card bg-white" />
       </div>
     </div>
   );

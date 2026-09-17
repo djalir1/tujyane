@@ -39,6 +39,7 @@ export const TextField = forwardRef<HTMLInputElement, BaseProps>(function TextFi
     <div className={`flex flex-col gap-1.5 ${className}`}>
       <label htmlFor={inputId} className="text-sm font-medium text-text">
         {label}
+        {rest.required && <span className="text-danger ml-0.5" aria-hidden>*</span>}
       </label>
       <div
         className={[
