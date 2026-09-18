@@ -32,10 +32,11 @@ const decisionCache = new Map<string, 'admin' | 'deny'>();
 export function AdminRoute({ children }: { children: ReactNode }) {
   const { user, status, authReady, profile } = useAuth();
   const uid = user?.id ?? null;
-  const initial: 'idle' | 'checking' | 'admin' | 'deny' = uid && decisionCache.has(uid)
+  type S = 'idle' | 'checking' | 'admin' | 'deny';
+  const initial: S = uid && decisionCache.has(uid)
     ? decisionCache.get(uid)!
     : 'idle';
-  const [state, setState] = useState(initial);
+  const [state, setState] = useState<S>(initial);
 
   useEffect(() => {
     let alive = true;

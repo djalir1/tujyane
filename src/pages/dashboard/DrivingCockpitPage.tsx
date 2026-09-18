@@ -316,12 +316,13 @@ function MapPlaceholder() {
   return (
     <div
       role="img"
-      aria-label="Live map placeholder"
+      aria-label="Route reference"
       className="rounded-card border border-dashed border-border h-40 grid place-items-center bg-bg-elevated"
     >
       <div className="text-center px-4">
         <div className="text-2xl">🗺️</div>
-        <div className="text-xs font-semibold text-text mt-1">Live route + pickup — Phase 6</div>
+        <div className="text-xs font-semibold text-text mt-1">Follow your usual route</div>
+        <div className="text-[11px] text-text-muted">Live tracking isn’t on in the pilot.</div>
       </div>
     </div>
   );

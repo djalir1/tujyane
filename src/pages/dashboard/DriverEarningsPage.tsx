@@ -19,7 +19,8 @@ type Bundle = { rows: EarningsRow[]; total: number; count: number };
 
 /**
  * Driver earnings — clearly labelled "demo figures". Not real money; TUJYANE
- * doesn't process payments (payment_status stays unpaid/manual until Phase 12).
+ * doesn't process payments, so payment_status stays unpaid/manual and drivers
+ * settle with passengers directly (cash or MoMo).
  */
 export default function DriverEarningsPage() {
   const { user } = useAuth();
@@ -71,7 +72,8 @@ export default function DriverEarningsPage() {
             <div className="t-caption">Demo figures</div>
             <CardTitle>Contributions received</CardTitle>
             <CardDescription>
-              Sum of passenger contributions on completed trips. No real money moves — MoMo settlement is Phase 12.
+              Sum of passenger contributions on completed trips. No money moves inside TUJYANE — you settle
+              directly with passengers (cash or MoMo).
             </CardDescription>
           </div>
           <div className="text-right">

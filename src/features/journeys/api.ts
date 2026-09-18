@@ -243,7 +243,6 @@ export async function createJourney(driverId: string, input: CreateJourneyInput)
       origin_text:             input.origin_text,
       destination_text:        input.destination_text,
       distance_km:             input.distance_km,
-      // TODO: replace haversine distance with real road distance in Phase 6 (map).
       departure_time: input.departure_time,
       recurrence: input.recurrence,
       seats_total: input.seats,

@@ -59,6 +59,7 @@ function receiptRowFromMyTrip(t: MyTrip): ReceiptRow | null {
       passengerNote: t.seats_booked > 1
         ? `+ ${t.seats_booked - 1} companion${t.seats_booked - 1 === 1 ? '' : 's'}`
         : null,
+      status: statusLabel(t.status),
     }),
   };
 }
@@ -96,8 +97,20 @@ function receiptRowFromDriverBooking(b: MyDriverReceipt): ReceiptRow | null {
       passengerNote: b.seats_booked > 1
         ? `+ ${b.seats_booked - 1} companion${b.seats_booked - 1 === 1 ? '' : 's'}`
         : null,
+      status: statusLabel(b.status),
     }),
   };
+}
+
+function statusLabel(s: string | null | undefined): string {
+  switch (s) {
+    case 'completed': return 'Completed';
+    case 'accepted':  return 'Confirmed';
+    case 'boarding':  return 'Boarding';
+    case 'in_trip':   return 'In trip';
+    case 'cancelled': return 'Cancelled';
+    default:          return 'Confirmed';
+  }
 }
 
 /** Per-row download state. Powers the "Preparing… → Downloaded ✓" affordance

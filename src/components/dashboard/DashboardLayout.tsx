@@ -8,6 +8,7 @@ import { Avatar, UserMenu } from '@/components/layout/UserMenu';
 import { useAuth } from '@/auth/useAuth';
 import { MobileNavDrawer } from '@/components/layout/MobileNavDrawer';
 import { navGroupsFor, type NavLeaf, type NavVariant } from '@/components/layout/navConfig';
+import { AdminLookupTrigger } from '@/pages/dashboard/AdminLookupPalette';
 
 const STORAGE_KEY = 'tujyane.sidebar-collapsed';
 
@@ -126,6 +127,7 @@ export function DashboardLayout({ variant }: { variant: DashboardVariant }) {
               <h1 className="t-h3 text-text truncate">{title}</h1>
             </div>
             <div className="ml-auto flex items-center gap-2">
+              {variant === 'admin' && <AdminLookupTrigger />}
               <div className="hidden sm:block"><LanguageSwitcher /></div>
               <ThemeToggle />
               <UserMenu />

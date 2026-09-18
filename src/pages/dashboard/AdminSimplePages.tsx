@@ -1,9 +1,11 @@
 /**
- * Small admin surfaces: Drivers list, Journeys, Bookings, Contributions,
- * plus placeholder Live / Payments / Reports / Settings screens.
+ * Small admin surfaces: Drivers, Journeys, Bookings, Contributions,
+ * plus Live and Payments status pages.
  *
  * All data comes from admin_* RPCs (SECURITY DEFINER, `not_admin` guard).
  * Non-admins are refused at the SQL layer AND blocked by the AdminRoute gate.
+ *
+ * Reports and Settings each live in their own file now.
  */
 import { useCallback } from 'react';
 import { Card, CardDescription, CardTitle } from '@/components/ds/Card';
@@ -186,8 +188,8 @@ export function AdminContributionsPage() {
       <Card>
         <CardTitle>Payments in-app: not live</CardTitle>
         <CardDescription>
-          Contributions are recorded but no money is moving inside TUJYANE yet.
-          MoMo integration + settlement is Phase 12. These numbers are the running total from completed bookings.
+          Contributions are recorded but no money moves inside TUJYANE yet — drivers and passengers
+          settle in cash or with MoMo directly. These figures are the running total from completed bookings.
         </CardDescription>
       </Card>
     </div>
@@ -196,12 +198,13 @@ export function AdminContributionsPage() {
 
 export function AdminLivePage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-3">
       <Card>
-        <CardTitle>Live rides — coming with the map (Phase 6)</CardTitle>
+        <CardTitle>Live tracking is off</CardTitle>
         <CardDescription>
-          When live tracking ships, this screen will show every in-progress trip on a map with driver, passengers,
-          and boarding status. For now, use the Bookings + Journeys tables and the Audit log.
+          TUJYANE doesn’t track vehicles on a map in the pilot. To see what’s happening right now, use the
+          Journeys and Bookings tables (filter by status <em>in_trip</em> or <em>boarding</em>) and the audit
+          log for the timeline of driver / passenger actions.
         </CardDescription>
       </Card>
     </div>
@@ -210,39 +213,13 @@ export function AdminLivePage() {
 
 export function AdminPaymentsPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-3">
       <Card>
-        <CardTitle>Payments — MoMo settlement (Phase 12)</CardTitle>
+        <CardTitle>Payments aren’t held by TUJYANE</CardTitle>
         <CardDescription>
-          No real money moves through TUJYANE yet. When MoMo settlement is enabled, this dashboard will show payment intents,
-          settlement batches, refunds and reconciliation.
-        </CardDescription>
-      </Card>
-    </div>
-  );
-}
-
-export function AdminReportsPage() {
-  return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-      <Card>
-        <CardTitle>Reports — dashboards + CSV export</CardTitle>
-        <CardDescription>
-          Scheduled reports (rides per week, average distance, driver utilisation, verification funnel) land here as CSV downloads.
-          Phase 13.
-        </CardDescription>
-      </Card>
-    </div>
-  );
-}
-
-export function AdminSettingsPage() {
-  return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-      <Card>
-        <CardTitle>Platform controls</CardTitle>
-        <CardDescription>
-          Per-km rate table, minimum contribution, adjust band %, cancellation windows. Editable here in a later phase; today they live in the pricing_config row.
+          Contributions are recorded per booking but drivers and passengers settle directly (cash or MoMo).
+          When an in-app payment provider is integrated, this dashboard will show settlement batches,
+          refunds, and reconciliation. For now, use the Contributions tab for aggregate numbers.
         </CardDescription>
       </Card>
     </div>

@@ -39,8 +39,9 @@ import AdminAuditPage from '@/pages/dashboard/AdminAuditPage';
 import {
   AdminDriversPage, AdminJourneysPage, AdminBookingsPage,
   AdminContributionsPage, AdminLivePage, AdminPaymentsPage,
-  AdminReportsPage, AdminSettingsPage,
 } from '@/pages/dashboard/AdminSimplePages';
+import AdminReportsPage from '@/pages/dashboard/AdminReportsPage';
+import AdminSettingsPage from '@/pages/dashboard/AdminSettingsPage';
 
 export default function App() {
   return (

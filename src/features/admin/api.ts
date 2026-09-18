@@ -329,3 +329,113 @@ export async function listAuditEvents(limit = 100): Promise<AuditEvent[]> {
   if (error) throw mapErr(error);
   return (data ?? []) as AuditEvent[];
 }
+
+/* ---------- Platform settings (V-3) ---------- */
+
+export type PricingConfigRow = {
+  per_km_petrol: number;
+  per_km_diesel: number;
+  per_km_hybrid: number;
+  per_km_electric: number;
+  min_contribution: number;
+  adjust_band_pct: number;
+  bus_discount_pct: number;
+};
+
+export async function adminUpdatePricingConfig(next: PricingConfigRow): Promise<void> {
+  const { error } = await supabase.rpc('admin_update_pricing_config', {
+    p_per_km_petrol:   next.per_km_petrol,
+    p_per_km_diesel:   next.per_km_diesel,
+    p_per_km_hybrid:   next.per_km_hybrid,
+    p_per_km_electric: next.per_km_electric,
+    p_min_contribution: next.min_contribution,
+    p_adjust_band_pct:  next.adjust_band_pct,
+    p_bus_discount_pct: next.bus_discount_pct,
+  });
+  if (error) throw mapErr(error);
+}
+
+export type CorridorFareRow = {
+  id: string;
+  origin_location_id: string;
+  destination_location_id: string;
+  bus_fare_rwf: number | null;
+  notes: string | null;
+  updated_at: string;
+};
+
+/** Full corridor list for the admin editor — bypasses the client-side cache
+ * so a save immediately reflects. */
+export async function adminListCorridorFares(): Promise<CorridorFareRow[]> {
+  const { data, error } = await supabase
+    .from('corridor_fares')
+    .select('id,origin_location_id,destination_location_id,bus_fare_rwf,notes,updated_at')
+    .order('updated_at', { ascending: false });
+  if (error) throw mapErr(error);
+  return (data ?? []) as CorridorFareRow[];
+}
+
+export async function adminSetCorridorFare(input: {
+  originId: string;
+  destinationId: string;
+  busFareRwf: number;
+  notes?: string | null;
+}): Promise<CorridorFareRow> {
+  const { data, error } = await supabase.rpc('admin_set_corridor_fare', {
+    p_origin_id: input.originId,
+    p_destination_id: input.destinationId,
+    p_bus_fare_rwf: input.busFareRwf,
+    p_notes: input.notes ?? null,
+  });
+  if (error) throw mapErr(error);
+  return data as CorridorFareRow;
+}
+
+export async function adminDeleteCorridorFare(id: string): Promise<void> {
+  const { error } = await supabase.rpc('admin_delete_corridor_fare', { p_id: id });
+  if (error) throw mapErr(error);
+}
+
+/* ---------- Reports (V-4) ---------- */
+
+export type AdminReportsSummary = {
+  generated_at: string;
+  total_users: number;
+  active_drivers: number;
+  total_vehicles: number;
+  verified_vehicles: number;
+  total_journeys: number;
+  active_journeys: number;
+  total_bookings: number;
+  completed_bookings: number;
+  contribution_total_rwf: number;
+  contribution_avg_rwf: number;
+  verification_funnel: {
+    personal_submitted: number;
+    personal_approved: number;
+    personal_rejected: number;
+    vehicles_submitted: number;
+    vehicles_approved: number;
+  };
+  rides_by_iso_week: { week: string; rides: number }[];
+};
+
+export async function loadReportsSummary(): Promise<AdminReportsSummary> {
+  const { data, error } = await supabase.rpc('admin_reports_summary');
+  if (error) throw mapErr(error);
+  return data as AdminReportsSummary;
+}
+
+/* ---------- Global lookup (V-2) ---------- */
+
+export type LookupHit = {
+  kind: 'booking' | 'journey' | 'user' | 'vehicle';
+  // rest is a bag depending on kind — the component narrows on `kind`
+  [k: string]: unknown;
+};
+
+export async function adminLookup(query: string): Promise<LookupHit[]> {
+  const { data, error } = await supabase.rpc('admin_lookup', { p_query: query });
+  if (error) throw mapErr(error);
+  return (data ?? []) as LookupHit[];
+}

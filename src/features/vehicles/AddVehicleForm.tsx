@@ -166,8 +166,8 @@ export function AddVehicleForm({ onCreated, onCancel }: Props) {
     <Card>
       <CardTitle>Add your vehicle</CardTitle>
       <CardDescription>
-        You need at least one vehicle before posting a journey. Verification is
-        happening in a later phase — for the pilot you can post while it's pending.
+        You need at least one vehicle before posting a journey. After you save it, upload the vehicle
+        documents from the Verification page so admins can review it.
       </CardDescription>
 
       <form ref={formRef} onSubmit={onSubmit} className="mt-5 grid gap-4" noValidate>

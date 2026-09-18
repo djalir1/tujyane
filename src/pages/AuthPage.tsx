@@ -143,7 +143,14 @@ export default function AuthPage() {
 const LOGIN_ATTEMPT_KEY = 'tj:login_attempts';
 const LOGIN_LOCK_UNTIL_KEY = 'tj:login_lock_until';
 const LOGIN_MAX_ATTEMPTS = 5;
-const LOGIN_LOCK_MS = 60_000; // 60 seconds
+const LOGIN_LOCK_MS = 3 * 60_000; // 3 minutes
+
+function fmtMMSS(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${r.toString().padStart(2, '0')}`;
+}
 
 function readAttempts(): number {
   try { return Number(localStorage.getItem(LOGIN_ATTEMPT_KEY) ?? '0') || 0; } catch { return 0; }
@@ -208,21 +215,19 @@ function SignInForm({ onDone, onSwitchToSignup }: { onDone: () => void; onSwitch
       clearAttempts();
       onDone();
     } catch (err) {
+      // Professional behaviour: silently count up to LOGIN_MAX_ATTEMPTS, always
+      // showing the same generic message so an attacker can't tell how close
+      // they are to the wall. On the NEXT failure past that, engage a timed
+      // lockout with a visible countdown. Never leak "N attempts left".
       const attempts = readAttempts() + 1;
       writeAttempts(attempts);
       if (attempts >= LOGIN_MAX_ATTEMPTS) {
         const until = Date.now() + LOGIN_LOCK_MS;
         writeLockUntil(until);
         setLockedUntil(until);
-        setErrors({
-          form: `Too many failed attempts. Please wait ${Math.ceil(LOGIN_LOCK_MS / 1000)}s and try again. (AUTH-04)`,
-        });
+        setErrors({ form: null as unknown as string }); // handled by the lock banner below
       } else {
-        const remaining = LOGIN_MAX_ATTEMPTS - attempts;
-        const base = mapAuthError(err);
-        setErrors({
-          form: `${base} ${remaining > 0 ? `${remaining} attempt${remaining === 1 ? '' : 's'} left.` : ''}`.trim(),
-        });
+        setErrors({ form: mapAuthError(err) });
       }
     } finally {
       setSubmitting(false);
@@ -260,15 +265,23 @@ function SignInForm({ onDone, onSwitchToSignup }: { onDone: () => void; onSwitch
           Forgot password?
         </button>
       </div>
-      {errors.form && (
+      {/* While locked, suppress the per-attempt error so the countdown is the
+          only signal. Keeps the UI free of stacked/redundant messages. */}
+      {!locked && errors.form && (
         <p className="text-sm text-danger bg-danger-soft rounded-field px-3 py-2 border border-danger/30">
           {errors.form}
         </p>
       )}
       {locked && (
-        <p className="text-sm text-warning bg-warning/10 rounded-field px-3 py-2 border border-warning/30">
-          Please wait {secondsLeft}s before trying again.
-        </p>
+        <div
+          role="alert"
+          className="text-sm bg-danger/10 rounded-field px-3 py-2 border border-danger/30"
+        >
+          <div className="font-semibold text-danger">Too many attempts</div>
+          <div className="text-text-muted mt-0.5">
+            Try again in <span className="tabular-nums font-semibold text-text">{fmtMMSS(secondsLeft)}</span>.
+          </div>
+        </div>
       )}
       <Button type="submit" loading={submitting} disabled={locked} fullWidth>
         {t('auth.signIn')}
