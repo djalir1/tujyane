@@ -142,7 +142,11 @@ export default function AuthPage() {
  */
 const LOGIN_ATTEMPT_KEY = 'tj:login_attempts';
 const LOGIN_LOCK_UNTIL_KEY = 'tj:login_lock_until';
-const LOGIN_MAX_ATTEMPTS = 5;
+// Allow 7 clean-error attempts; only lock on the 8th consecutive failure.
+// Reason: real users routinely mistype passwords 2–4 times before recalling
+// them (caps lock, wrong autofill, keyboard layout). A 5-strike wall was
+// hitting honest users mid-recall.
+const LOGIN_MAX_ATTEMPTS = 8;
 const LOGIN_LOCK_MS = 3 * 60_000; // 3 minutes
 
 function fmtMMSS(seconds: number): string {

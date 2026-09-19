@@ -24,8 +24,10 @@ type Props = {
  * escapes any parent stacking context — the header has backdrop-blur which
  * creates a stacking context and would trap the drawer inside otherwise.
  *
- * - Backdrop dims + blocks interaction with the page beneath (z-[90]).
- * - Panel is a fully opaque solid surface (z-[100]).
+ * - Backdrop dims + blocks interaction with the page beneath (z-[1000]).
+ * - Panel is a fully opaque solid surface (z-[1010]).
+ * Both sit above Leaflet's default control z-index (1000) so the map does
+ * not bleed through the drawer on pages that host a Leaflet map.
  * - Escape closes it, backdrop click closes it, X closes it, leaf tap closes it.
  * - Focus is trapped inside while open; on close focus returns to the caller.
  * - Body scroll is locked while open.
@@ -92,13 +94,15 @@ export function MobileNavDrawer({ open, onClose, variant, returnFocusTo }: Props
 
   return createPortal(
     <>
-      {/* Backdrop — z-[90], full screen, dims content, blocks pointer. */}
+      {/* Backdrop — z-[1000], full screen, dims content, blocks pointer.
+          Must sit at or above Leaflet's control z-index (1000) so map tiles
+          and controls don't leak through the dimmer. */}
       <div
-        className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-[2px]"
+        className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
       />
-      {/* Panel — z-[100], solid opaque surface, slides in from LEFT. */}
+      {/* Panel — z-[1010], solid opaque surface, slides in from LEFT. */}
       <aside
         ref={panelRef}
         role="dialog"
@@ -109,7 +113,7 @@ export function MobileNavDrawer({ open, onClose, variant, returnFocusTo }: Props
         // the content and clips the last nav item behind the bottom navbar.
         // The <nav> child owns the scroll, and we reserve safe-area padding
         // on the bottom footer so items above stay reachable on iOS.
-        className="fixed left-0 top-0 bottom-0 z-[100] w-[86%] max-w-sm border-r border-border shadow-elevate flex flex-col animate-drawerInLeft"
+        className="fixed left-0 top-0 bottom-0 z-[1010] w-[86%] max-w-sm border-r border-border shadow-elevate flex flex-col animate-drawerInLeft"
         style={{ backgroundColor: 'rgb(var(--bg-elevated))', height: '100dvh' }}
       >
         {/* Header row */}

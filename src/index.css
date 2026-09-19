@@ -42,3 +42,8 @@ body {
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.18);
 }
+/* Contain Leaflet's internal stacking so panes (z-index 400) and controls
+ * (z-index 1000) do not leak above app overlays like the mobile nav drawer.
+ * Without this, opening the drawer on a page with a map made the map bleed
+ * through the drawer surface. */
+.leaflet-container { isolation: isolate; }
