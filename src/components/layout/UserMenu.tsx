@@ -89,11 +89,7 @@ export function UserMenu({ className = '' }: { className?: string }) {
             <div className="min-w-0">
               <div className="text-sm font-semibold text-text truncate">{fullName || firstName}</div>
               <div className="text-xs text-text-muted truncate">
-                {profile?.role_intent === 'driver'
-                  ? 'Driver'
-                  : profile?.role_intent === 'both'
-                    ? 'Passenger · Driver'
-                    : 'Passenger'}
+                {roleLabelFor(profile?.role_intent, isAdmin)}
               </div>
             </div>
           </div>
@@ -140,6 +136,20 @@ export function UserMenu({ className = '' }: { className?: string }) {
       )}
     </div>
   );
+}
+
+/**
+ * Label shown under the user's name in the dropdown. Mirrors the mobile
+ * drawer's `roleLabelFor` so both surfaces stay consistent. Admin status
+ * wins over role_intent — the header dropdown was showing "Passenger" for
+ * super-admins because it only looked at role_intent and ignored the
+ * separate admin_users signal.
+ */
+function roleLabelFor(role: string | undefined, isAdmin: boolean): string {
+  if (role === 'super_admin' || isAdmin) return 'Super Admin';
+  if (role === 'driver') return 'Driver';
+  if (role === 'both') return 'Passenger · Driver';
+  return 'Passenger';
 }
 
 function MenuLink({ to, children, onNavigate }: { to: string; children: React.ReactNode; onNavigate: () => void }) {
